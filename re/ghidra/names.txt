@@ -1,0 +1,9 @@
+# <addr> <name> [# comment]   addr = code offset in seg 1000, or ds:XXXX
+1b12 main
+0029 fatal_exit
+5dbc copy_protection           # manual quiz; 2 rand() calls; stores answer at ds:0236/023a
+2378 spawn_piece               # re-checks ds:0236 vs ds:023a [verify name]
+9e83 srand
+9e94 rand
+ds:0236 prot_typed
+ds:023a prot_expected
