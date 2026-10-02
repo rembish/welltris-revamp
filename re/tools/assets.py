@@ -1,7 +1,7 @@
 """Decode WELLTRIS.EXE's images from your own original/*.bin and build upscaled assets.
 
 usage: assets.py decode        # assets-local/raw/*.png at native resolution
-       assets.py build         # assets-local/hd/*.png, upscaled 3x to 4:3
+       assets.py build         # assets-local/hd/*.jpg|png, upscaled 3x to 4:3
 
 Everything goes to assets-local/, which is git-ignored: the art is Spectrum HoloByte's and is
 never committed or published. Builds embed it only with -DWT_LOCAL_ASSETS=ON.
@@ -96,8 +96,13 @@ def build():
     os.makedirs(hd, exist_ok=True)
     for n in IMAGES:
         im = load_image(n)
-        out = upscale_photo(im) if STYLE[n] == 'photo' else upscale_vector(im, hd)
-        out.save(os.path.join(hd, n + '.png'), optimize=True)
+        if STYLE[n] == 'photo':
+            upscale_photo(im).save(os.path.join(hd, n + '.jpg'), quality=92)
+            out = None
+        else:
+            out = upscale_vector(im, hd)
+            out.save(os.path.join(hd, n + '.png'), optimize=True)
+        out = out or Image.open(os.path.join(hd, n + '.jpg'))
         print(n, STYLE[n], out.size)
     for f in ('trace.png', 'trace.svg'): os.remove(os.path.join(hd, f))
 

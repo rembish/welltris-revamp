@@ -4,6 +4,7 @@ original/
 # Builds
 build/
 build-web/
+build-local/
 
 # Ghidra project and generated output (regenerate with re/ghidra/run.sh)
 re/ghidra/proj/
