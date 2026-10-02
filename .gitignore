@@ -10,3 +10,6 @@ re/ghidra/proj/
 re/ghidra/headless.log
 re/ghidra/*_decomp.c
 __pycache__/
+
+# Art decoded/upscaled from your own original files by re/tools/assets.py (never committed)
+assets-local/

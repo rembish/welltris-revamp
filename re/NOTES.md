@@ -183,3 +183,17 @@ ups; even runs are random keys (all move/rotate keys, Space, Alt-I/N/M, unbound 
 with prefilled floor lines. `re/emu/mutants.py` breaks the core in 15 ways (timings, scoring,
 collision, walker semantics, key handling) and checks that difftest notices each; rare paths
 are pinned by regression seeds (227: empty-floor bonus, 36: rotation across walls).
+
+## Images
+
+`load_image` (`08ba`) files: `{u16 size, u16 0, u16 bytes_per_row, u16 rows}` then PCX-style
+RLE (byte ≥ 0xc0: `byte & 0x3f` copies of the next byte). Unpacked: 4 bit planes one after the
+other, plane *p* = colour bit *p*, default EGA palette (the game never reprograms it).
+`clip.bin` (`load_clip`, 13 sub-images), `pieces.bin` and `data.bin` (`load_image_rle`,
+`{u16 packed, u16 unpacked, 3 words}` + `0x80|n` RLE) hold the perspective cell sprites and UI
+clips, which the port draws itself.
+
+`re/tools/assets.py` decodes the images from your own copy and builds upscaled versions into
+the git-ignored `assets-local/`: line art is traced (vtracer) and rasterised, dithered pictures
+are de-dithered (blur, bilateral filtering, sharpening). Only builds made with
+`-DWT_LOCAL_ASSETS=ON` embed them; nothing derived from the original art is committed.
