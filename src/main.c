@@ -498,6 +498,8 @@ static void key_down(const SDL_Keysym *k, int repeat)
 
 /* ---- touch -------------------------------------------------------------------------- */
 
+static void setup_point(float x, float y);
+
 static void set_touch(int on)
 {
     A.touch = on;
@@ -514,7 +516,9 @@ static void finger_down(float nx, float ny, int64_t finger)
         if (A.scr == S_TITLE) {
             session_start();
             enter_setup();
-        } else if (A.scr != S_SETUP)
+        } else if (A.scr == S_SETUP)
+            setup_point(nx * (float)A.w, ny * (float)A.h);
+        else if (!(A.scr == S_HOF && A.hof_entry))
             enter_setup();
         return;
     }
@@ -589,6 +593,11 @@ static const float item_box[9][4] = { { 40, 56, 160, 20 },  { 40, 86, 160, 20 },
                                       { 40, 146, 170, 44 }, { 80, 238, 200, 26 }, { 228, 56, 92, 20 },
                                       { 246, 86, 50, 20 },  { 230, 116, 84, 36 }, { 246, 168, 50, 20 } };
 
+/* menu hit areas, recorded while drawing (mouse and touch) */
+static box hit_item[9], hit_val[5][5], hit_start;
+
+static int inside(box b, float x, float y) { return x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; }
+
 static void draw_setup_art(float t)
 {
     screen43 s = fit43();
@@ -597,7 +606,12 @@ static void draw_setup_art(float t)
         int v = A.opt[i];
         float w = i == 1 || i == 3 ? val_wk[v][i] : val_w[i];
         glow_box(map43(&s, val_x[i][v] - 1, val_y[i] - 1, w + 2, (i == 4 ? 12 : 15) + 2), rgb_hex(0x6ff7ff, 1), t, 0);
+        for (int k = 0; k < opt_count[i]; k++)
+            hit_val[i][k] = map43(&s, val_x[i][k] - 2, val_y[i] - 3, (i == 1 || i == 3 ? val_wk[k][i] : val_w[i]) + 4,
+                                  (i == 4 ? 12 : 15) + 6);
     }
+    for (int i = 0; i < 9; i++) hit_item[i] = map43(&s, item_box[i][0], item_box[i][1], item_box[i][2], item_box[i][3]);
+    hit_start = map43(&s, 354, 102, 110, 34);
     const float *b = item_box[A.cursor];
     glow_box(map43(&s, b[0], b[1], b[2], b[3]), rgb_hex(0xffd166, 1), t, 1);
 }
@@ -628,12 +642,14 @@ static void draw_setup_modern(float t)
         int col = i < 5 ? 0 : 1, row = i < 5 ? i : i - 5;
         float x = p.x + s * (col ? 17.5f : 1.2f), y = p.y + s * (3.6f + (float)row * 2.4f);
         box hb = { x - s * 0.4f, y - s * 0.3f, col ? s * 7.6f : s * 15.6f, s * 1.6f };
+        hit_item[i] = hb;
         if (i == A.cursor) glow_box(hb, rgb_hex(0xffd166, 1), t, 1);
         font_draw(x, y, s * 0.9f, rgb_hex(0xe9eef7, 1), ALIGN_LEFT, labels[i]);
         if (i < 5)
             for (int v = 0; v < opt_count[i]; v++) {
                 float vx = x + s * (6.2f + (float)v * (i == 4 ? 1.9f : 2.3f));
                 int on = A.opt[i] == v;
+                hit_val[i][v] = (box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f };
                 if (on) glow_box((box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f },
                                  rgb_hex(0x6ff7ff, 1), t, 0);
                 font_draw(vx + s * (i == 4 ? 0.62f : 0.75f), y, s * 0.9f,
@@ -641,6 +657,7 @@ static void draw_setup_modern(float t)
             }
     }
     box sb = { p.x + s * 17.1f, p.y + p.h - s * 3.2f, s * 7.8f, s * 2.2f };
+    hit_start = sb;
     gfx_round_rect(sb.x, sb.y, sb.w, sb.h, s * 0.3f, rgb_hex(0x7a1f1f, 1));
     font_draw(sb.x + sb.w / 2, sb.y + s * 0.25f, s * 0.9f, rgb_hex(0xffffff, 1), ALIGN_CENTER, "START GAME");
     font_draw(sb.x + sb.w / 2, sb.y + s * 1.25f, s * 0.55f, rgb_hex(0xffd2c4, 1), ALIGN_CENTER, "(SPACE BAR)");
@@ -834,6 +851,38 @@ static void render(void)
 
 /* ---- main loop -------------------------------------------------------------------------- */
 
+/* a click or tap on the setup screen */
+static void setup_point(float x, float y)
+{
+    if (A.ovl == O_QUIT) {
+        A.ovl = O_NONE;
+        return;
+    }
+    if (inside(hit_start, x, y)) {
+        start_game();
+        return;
+    }
+    for (int i = 0; i < 5; i++)
+        for (int k = 0; k < opt_count[i]; k++)
+            if (inside(hit_val[i][k], x, y)) {
+                A.cursor = i;
+                A.opt[i] = (uint8_t)k;
+                return;
+            }
+    for (int i = 0; i < 9; i++)
+        if (inside(hit_item[i], x, y)) {
+            if (A.cursor == i || i >= 5) {
+                A.cursor = i;
+                if (i < 5)
+                    setup_value(1);
+                else
+                    setup_activate();
+            }
+            A.cursor = i;
+            return;
+        }
+}
+
 static void mouse_click(int x, int y)
 {
     int ww, wh;
@@ -841,8 +890,10 @@ static void mouse_click(int x, int y)
     SDL_GetWindowSize(A.win, &ww, &wh);
     fx = (float)x * (float)A.w / (float)ww;
     fy = (float)y * (float)A.h / (float)wh;
-    (void)fx;
-    (void)fy;
+    if (A.scr == S_SETUP) {
+        setup_point(fx, fy);
+        return;
+    }
     if (A.scr == S_TITLE) {
         session_start();
         enter_setup();
