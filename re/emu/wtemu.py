@@ -174,7 +174,7 @@ class Game(WT):
         self.w32(0x1080, seed)                       # Turbo C rand() state
         self.w8(0x109f, piece_set); self.w8(0x1098, level)
         self.w8(0x000d, 0)                           # sound off (timing is the same either way)
-        self.w8(0x000f, 0 if preview else 0xff)
+        self.w8(0x000f, 0xff if preview else 0)
         self.w8(0x0010, 0xff if fixed_keys else 0)
         d = 0x119
         for i in range(level): d -= self.r8(0x0038 + i)
@@ -215,7 +215,7 @@ class Game(WT):
             str(self.r32(0x1080)), ';'.join(stored)])
 
     def run(self, keys, max_iter=100000):
-        self.keys = sorted(keys)
+        self.keys = sorted(keys, key=lambda k: k[0])
         self.log.append(self.snapshot())
         for _ in range(max_iter):
             if self.r8(0x000c) or self.exit_code is not None: break
