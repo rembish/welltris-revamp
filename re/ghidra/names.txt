@@ -35,7 +35,7 @@
 1cf4 piece_fall                # row-1, undo on collision
 1d21 piece_left                # col-1 (wraps 0..31)
 1d88 piece_right
-1def piece_rotate              # (piece, max_tries) rotate until fits; keyboard passes the key code as max_tries
+1def piece_rotate              # (piece, n) up to n quarter turns while it fits; keyboard passes the key code as n
 1f3b piece_collides
 2084 score_for_piece
 2378 spawn_piece               # also re-checks protection ds:0236/023a

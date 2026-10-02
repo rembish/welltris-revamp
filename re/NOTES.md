@@ -85,11 +85,14 @@ them. The port drops all of it but keeps the two `rand()` calls (they advance th
   already on the floor; code 5 = origin cell. `piece_next_cell` (`2706`) walks the chain.
 - Rotation (`piece_rotate`, `1def`) adds 1 to each code (1→2→3→4→1, 5 untouched) and to the
   rotation counter (`+2`, mod 4). Records at offset `0x42` and `0x6e` never rotate.
-- `piece_rotate(piece, max_tries)` rotates until the piece fits or `max_tries` is used up;
-  on failure it undoes **one** step. The keyboard handler calls it without the second
-  argument, so `max_tries` is the caller's local key code: 75 (`K`), 107 (`k`), 53 (`5`).
-  When no orientation fits, `K`/`k` leave the piece turned by 2 steps, `5` by 0. **[verify]**
-- `spawn_piece` (`2378`) calls it with `rand()%4 + 1`; the first rotation that fits wins.
+- `piece_rotate(piece, n)` makes up to `n` quarter turns **while the piece fits**: it stops at
+  the first turn that collides (or crosses walls on the floor, `1acc`) and undoes that one
+  turn. The keyboard handler calls it without the second argument, so `n` is the caller's
+  local key code: `5` = 53 turns ≡ 1 step, `K` = 75 ≡ 3 steps, `k` = 107 ≡ 3 steps (the other
+  way round), unless a turn on the way collides. For the non-rotating records the result is
+  an uninitialised local, which on the keyboard path is the 0 that `poll_key_global` left in
+  the same stack slot, so only `1acc` decides whether the fail sound plays.
+- `spawn_piece` (`2378`) calls it with `rand()%4 + 1`: a random start orientation.
 - Classes (`ds:0206` counts, `ds:01fe` record sizes, `piece_sets` at `ds:130c`):
   class 0: 3 pieces at `ds:0102` (6 bytes), class 1: 7 at `ds:0114` (8), class 2: 18 at
   `ds:014c` (9), class 3: 1 at `ds:01ee` (15, level bonus piece).
@@ -170,3 +173,13 @@ Menu entries 5–8: hall of fame, credits, save options, quit.
   walked; `35de` skips the cell after a flagged code.
 - Pause (Alt-P) does not stop the tick counter: the ISR's pause flag `cs:6688` is never set
   (its setters `672c`/`6733` have no callers). Deadlines expire during a pause.
+
+## Verification
+
+`re/emu/difftest.py` compares the core with the emulated original after every pass of the
+play loop (full board, walls, stored pieces, score, deadlines, RNG, clock). Odd runs are
+played by a search bot (`tests/botgen.c`) that clears lines and reaches bonus pieces and level
+ups; even runs are random keys (all move/rotate keys, Space, Alt-I/N/M, unbound keys, bursts)
+with prefilled floor lines. `re/emu/mutants.py` breaks the core in 15 ways (timings, scoring,
+collision, walker semantics, key handling) and checks that difftest notices each; rare paths
+are pinned by regression seeds (227: empty-floor bonus, 36: rotation across walls).

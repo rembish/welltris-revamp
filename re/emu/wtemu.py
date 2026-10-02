@@ -168,7 +168,7 @@ class Game(WT):
         super().__init__()
         self.log = []
 
-    def setup(self, seed, piece_set=0, level=0, preview=True, fixed_keys=False, clock=0):
+    def setup(self, seed, piece_set=0, level=0, preview=True, fixed_keys=False, clock=0, fill=()):
         self.clock = clock
         self.sync_ticks()
         self.w32(0x1080, seed)                       # Turbo C rand() state
@@ -183,6 +183,7 @@ class Game(WT):
         self.wb(0x0236, b'wellwell')                 # copy protection: answer == expected
         self.wb(0x0725, b'wellwell')
         self.call(0x0739)                            # game_init
+        for x, y, c in fill: self.w8(0x12b2 + (x & 7) * 8 + (y & 7), c)
 
     def next_event(self):
         """Clock of the next thing that can change the game: a key or the active deadline."""

@@ -1,7 +1,8 @@
 /* Replay a key script through the core, printing the state after every pass of the play loop
  * in the same format as re/emu/wtemu.py, for re/emu/difftest.py.
  *
- * Script: "seed piece_set level preview fixed_keys clock" then "clock key_hex" lines. */
+ * Script: "seed piece_set level preview fixed_keys clock", "n x y colour..." (prefilled floor
+ * cells), then "clock key_hex" lines. */
 #include "wt_core.h"
 
 #include <inttypes.h>
@@ -82,7 +83,10 @@ int main(int argc, char **argv)
     unsigned long seed, set, level, preview, fixed, max_iter;
     unsigned long long clock;
     unsigned key;
-    unsigned long n, nk = 0, ki = 0;
+    unsigned long n, nk = 0, ki = 0, nfill, i;
+    unsigned fx[64], fy[64], fc[64];
+    unsigned long fxc[16] = { 0 };
+    int b;
     static uint64_t at[1 << 16];
     static uint16_t keys[1 << 16];
     if (argc < 3) {
@@ -91,7 +95,9 @@ int main(int argc, char **argv)
     }
     f = fopen(argv[1], "r");
     if (!f) return 1;
-    if (fscanf(f, "%lu %lu %lu %lu %lu %llu", &seed, &set, &level, &preview, &fixed, &clock) != 6) return 1;
+    if (fscanf(f, "%lu %lu %lu %lu %lu %llu %lu", &seed, &set, &level, &preview, &fixed, &clock, &nfill) != 7) return 1;
+    for (i = 0; i < nfill && i < 64; i++)
+        if (fscanf(f, "%u %u %u", &fx[i], &fy[i], &fc[i]) != 3) return 1;
     max_iter = strtoul(argv[2], NULL, 10);
     wt_session_init(&g, (uint32_t)seed, clock);
     memset(&o, 0, sizeof o);
@@ -107,12 +113,17 @@ int main(int argc, char **argv)
     /* the core's queue is small (a frontend pushes keys as they come): keep it topped up */
     for (; ki < nk && g.q_len < WT_KEYQ; ki++) wt_push_key(&g, at[ki], keys[ki]);
     wt_new_game(&g, &o);
+    for (i = 0; i < nfill && i < 64; i++) g.floor[fx[i] & 7][fy[i] & 7] = (uint8_t)fc[i];
     snapshot(&g);
     for (n = 0; n < max_iter && !g.game_over; n++) {
         for (; ki < nk && g.q_len < WT_KEYQ; ki++) wt_push_key(&g, at[ki], keys[ki]);
         wt_iterate(&g, UINT64_MAX);
         snapshot(&g);
+        for (b = 0; b < 16; b++)
+            if (g.effects & (1u << b)) fxc[b]++;
+        g.effects = 0;
     }
-    printf("end anomaly=%d\n", g.anomaly);
+    printf("end anomaly=%d fail=%lu lines=%lu freeze=%lu thaw=%lu settle=%lu empty=%lu bonus=%lu levelup=%lu\n",
+           g.anomaly, fxc[0], fxc[1], fxc[2], fxc[3], fxc[4], fxc[5], fxc[6], fxc[7]);
     return 0;
 }
