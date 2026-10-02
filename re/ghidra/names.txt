@@ -90,7 +90,7 @@ a386 time
 883e write
 86d8 close
 9ebc struct_copy
-a262 toupper
+a262 tolower
 a22f sound
 a25b nosound
 8ac1 ltoa

@@ -158,3 +158,15 @@ Score is a 32-bit total, game ends with a top-score message at ≥ 1 000 000 000
 6 bytes: `[0]` piece set (`ds:109f`), `[1]` sound off, `[2]` fixed keys (`ds:0010`),
 `[3]` preview off (`ds:000f`), `[4]` start level (`ds:1098`), `[5]` video mode.
 Menu entries 5–8: hall of fame, credits, save options, quit.
+
+## Findings from the emulator harness
+
+- `a262` is `tolower`: the protection's expected letters are stored lower case.
+- `3699` (draw one cell) is also game logic: with `store` set it writes the cell into
+  `wall_cells`/`floor_cells`, and its return value (0xffff for a wall cell, 0 for a floor
+  cell, and for rows ≥ 12 whatever AX held at the call: the colour byte in `35de`) decides in
+  `35de` whether a stopped piece is stored on the wall or ends the game.
+- `piece_next_cell(codes, &col, &row, &skip, &idx)` (`2706`): `skip` = bit 7 of the code just
+  walked; `35de` skips the cell after a flagged code.
+- Pause (Alt-P) does not stop the tick counter: the ISR's pause flag `cs:6688` is never set
+  (its setters `672c`/`6733` have no callers). Deadlines expire during a pause.
