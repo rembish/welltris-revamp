@@ -102,7 +102,7 @@ ds:0725 prot_typed2
 ds:0729 prot_expected2
 ds:000c game_over
 ds:000d sound_on
-ds:000f no_preview             # options[3]; preview on costs 5 points per piece
+ds:000f preview_on             # options[3] == 0; preview costs 5 points per piece
 ds:0010 fixed_keys             # options[2]: left/right not remapped per wall
 ds:0011 piece_active
 ds:0012 dropping               # Space pressed: 3-tick fall
