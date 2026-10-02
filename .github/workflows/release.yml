@@ -1,0 +1,114 @@
+name: Binaries
+
+# Every push to master produces downloadable builds (Actions -> run -> Artifacts).
+# Pushing a tag like v1.0 also publishes them as a GitHub Release.
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04   # older glibc, so the binary runs on more distributions
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxkbcommon-dev libwayland-dev wayland-protocols \
+            libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libasound2-dev libpulse-dev \
+            libdbus-1-dev libudev-dev libdecor-0-dev
+      - name: Build
+        run: |
+          cmake -S . -B build -DWT_VENDOR_SDL=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j --target welltris
+      - name: Package
+        run: |
+          mkdir -p dist/welltris && cp build/welltris README.md dist/welltris/
+          tar -C dist -czf welltris-linux-x64.tar.gz welltris
+      - uses: actions/upload-artifact@v4
+        with:
+          name: welltris-linux-x64
+          path: welltris-linux-x64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja zip
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DWT_VENDOR_SDL=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target welltris
+      - name: Package
+        run: |
+          mkdir -p dist/welltris && cp build/welltris.exe README.md dist/welltris/
+          (cd dist && zip -r ../welltris-windows-x64.zip welltris)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: welltris-windows-x64
+          path: welltris-windows-x64.zip
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (universal arm64 + x86_64)
+        run: |
+          cmake -S . -B build -DWT_VENDOR_SDL=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          cmake --build build -j --target welltris
+      - name: Package
+        run: |
+          codesign --force --deep --sign - build/welltris.app
+          ditto -c -k --keepParent build/welltris.app welltris-macos-universal.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: welltris-macos-universal
+          path: welltris-macos-universal.zip
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Build
+        run: |
+          emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-web -j --target welltris
+      - name: Package
+        run: |
+          mkdir -p welltris-web
+          cp build-web/welltris.html welltris-web/index.html
+          cp build-web/welltris.js build-web/welltris.wasm welltris-web/
+          zip -r welltris-web.zip welltris-web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: welltris-web
+          path: welltris-web.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, macos, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

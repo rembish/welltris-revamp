@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+      - name: Build (warnings are errors)
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          cmake -S . -B build -DWT_WERROR=ON
+          cmake --build build -j
+      - name: Smoke test
+        run: |
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build/welltris --shot shot.bmp --screen game --secs 30
+          # a bot game recorded through the core replays to the same end state
+          ./build/wt_botgen 4242 2 1 1 0 1000 120 10 7 1 > bot.txt
+          ./build/wt_replay bot.txt 100000 | tail -1
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev cppcheck wget lsb-release gnupg
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh && sudo bash llvm.sh 21 && rm llvm.sh
+          sudo apt-get install -y clang-tidy-21 clang-format-21
+      - name: Configure
+        run: cmake -S . -B build
+      - name: clang-format
+        run: clang-format-21 --dry-run --Werror core/*.h core/wt_core.c src/*.c src/*.h tests/*.c
+      - name: clang-tidy
+        run: clang-tidy-21 -p build core/*.c src/*.c tests/*.c
+      - name: cppcheck
+        run: >
+          cppcheck --enable=warning,style,performance,portability --std=c99 --error-exitcode=1 --inline-suppr
+          --suppress=missingIncludeSystem '--suppress=*:*third_party/*' -U__EMSCRIPTEN__
+          -I core -I src core src tests
