@@ -1,9 +1,152 @@
 # <addr> <name> [# comment]   addr = code offset in seg 1000, or ds:XXXX
-1b12 main
-0029 fatal_exit
-5dbc copy_protection           # manual quiz; 2 rand() calls; stores answer at ds:0236/023a
-2378 spawn_piece               # re-checks ds:0236 vs ds:023a [verify name]
+# ---- startup / top level ----
+1b12 main                      # init, then forever: menu -> game -> game over
+026a parse_args                # argv[1] letter selects video mode (ds:111b)
+05ca init                      # timer, scores.bin, options.bin, video mode, buffers
+3061 choose_video_mode
+0029 fatal_exit                # (code) restores timer/video; 6 = protection failure
+01a1 free_all
+03ce restore_cwd
+# ---- copy protection (not ported) ----
+5dbc copy_protection           # manual quiz; 2 rand() calls; stores answer at ds:0236/023a and ds:0725/0729
+# ---- timing ----
+66c5 timer_install             # INT 8 hook, PIT divisor 0x18e7 (187.17 Hz)
+66fe timer_restore
+6740 isr_timer                 # ++ticks (cs:6684) unless paused (cs:6688); chains BIOS every 10th
+66af ticks_after               # (n) -> now + n (32-bit)
+6689 ticks_reached             # (t) -> 0xff if now >= t
+011c delay_ticks               # busy wait n ticks
+014c title_wait                # srand(time); rand() every poll until n ticks or key
+03fa sound_sweep               # (freq, step, up, count, gap, len, silence_after); delays even with sound off
+# ---- keyboard ----
+0000 get_key                   # bioskey(1)/bioskey(0); extended keys -> scan|0x8000, else ASCII
+19db poll_key_global           # get_key + Alt-Q quit / Alt-S sound toggle
+1a36 poll_key_paused
+17ce handle_alt_keys           # Alt-A abort, Alt-R restart, Alt-I skip level, Alt-P pause, Alt-N preview, Alt-M fixed keys
+0469 input_text
+3f9e confirm_yn                # "Are you sure you want to <x>?"
+4104 error_box
+# ---- game ----
+0739 game_init
+0dcc game_iteration            # one pass of the play loop; ends with page flip (vsync)
+149f handle_play_key           # one key per call, rest of the BIOS buffer discarded
+175c move_key_left
+1795 move_key_right
+1cf4 piece_fall                # row-1, undo on collision
+1d21 piece_left                # col-1 (wraps 0..31)
+1d88 piece_right
+1def piece_rotate              # (piece, max_tries) rotate until fits; keyboard passes the key code as max_tries
+1f3b piece_collides
+2084 score_for_piece
+2378 spawn_piece               # also re-checks protection ds:0236/023a
+248d build_piece
+2518 choose_piece              # rand per piece set option (ds:109f)
+2645 wall_to_floor             # (col,row<0) -> floor x,y
+2706 piece_next_cell           # walk shape code chain
+27be find_full_floor_lines
+28ed collapse_floor_lines
+2b42 settle_wall_pieces        # after unfreeze: let stacked wall pieces fall
+2dc7 store_wall_piece
+2eb9 freeze_walls_of_piece
+2f4a update_current_wall       # ds:10f4 = wall the piece is on
+2fd5 check_floor_empty_bonus   # ds:111d -> +500
+1bff clear_well
+35de draw_piece
+3699 draw_cell
+3afc clear_lines_effect
+3cc5 freeze_walls_effect
+44f3 flash_lines               # non-EGA path (ds:0017 == 0)
+43c6 top_score_box
+21af hiscore_insert
+4869 hiscore_draw
+4a96 hiscore_screen
+4a22 hiscore_enter_name
+4c32 options_menu              # 9 entries, ds:10a3 cursor; also re-checks protection ds:0725/0729
+57cc menu_blink
+59c5 credits_screen
+5adf draw_game_screen
+5d1d draw_level_scene
+460b video_mode_menu
+636e layout_low_res            # constants for 320x200 modes
+# ---- resources ----
+08ba load_bin_raw
+0be2 load_bin_rle
+0d53 unrle                     # 0x80|n, b -> n copies; else literal
+09c0 load_file
+0a97 save_file
+0af8 load_clip
+316f load_image
+3425 load_image_rle
+33af free_image
+# ---- C runtime (Turbo C 2.0) ----
 9e83 srand
 9e94 rand
+8b0a LXMUL
+a386 time
+7d52 farmalloc
+94b3 farfree
+8273 open
+8761 read
+883e write
+86d8 close
+9ebc struct_copy
+a262 toupper
+a22f sound
+a25b nosound
+8ac1 ltoa
+8a95 itoa
+# ---- data ----
 ds:0236 prot_typed
 ds:023a prot_expected
+ds:0725 prot_typed2
+ds:0729 prot_expected2
+ds:000c game_over
+ds:000d sound_on
+ds:000f no_preview             # options[3]; preview on costs 5 points per piece
+ds:0010 fixed_keys             # options[2]: left/right not remapped per wall
+ds:0011 piece_active
+ds:0012 dropping               # Space pressed: 3-tick fall
+ds:0015 lock_lr
+ds:0016 landed
+ds:0017 double_buffer          # 1 = EGA (page flip + vsync), 0 = other modes
+ds:0026 fall_delay             # ticks per row; 0x119 at level 0
+ds:002c lines_total            # long
+ds:0030 hiscores               # far ptr, 10 x 24 bytes
+ds:0034 options                # far ptr, 6 bytes: pieceset, sound_off, fixed_keys, preview_off, level, video
+ds:0038 level_speedup          # bytes 75,66,66,47 (shares bytes with "KBB/scores.bin")
+ds:0102 pieces_c0
+ds:0114 pieces_c1
+ds:014c pieces_c2
+ds:01ee pieces_c3
+ds:01fe piece_rec_size         # words per class
+ds:0206 piece_class_count      # words per class: 3, 7, 18, 1
+ds:0216 score_lines
+ds:0224 score_level
+ds:022e score_class
+ds:1092 gi                     # global loop counters
+ds:1094 gj
+ds:1096 floor_limit            # -8 normally, -4 while settling
+ds:1098 level
+ds:1099 piece_index
+ds:109a score                  # long
+ds:109f piece_set
+ds:10a0 score_overflow
+ds:10a1 piece_class
+ds:10a3 menu_cursor
+ds:10f4 current_wall
+ds:10f8 level_bonus_piece
+ds:1110 preview_shown
+ds:1114 next_piece
+ds:111c drop_rows_left
+ds:111d floor_empty_bonus
+ds:111f level_up
+ds:1120 fall_deadline          # long ticks
+ds:1124 drop_deadline          # long ticks
+ds:1128 wall_cells             # [32][12]
+ds:12aa wall_frozen            # [4] x {frozen, pieces_since}
+ds:12b2 floor_cells            # [8][8]
+ds:12f2 piece                  # 0x1a bytes: +2 rot, +3 codes, +0x12 class, +0x14 rec, +0x16 col, +0x18 row
+ds:130c piece_sets             # 4 far ptrs
+ds:131c skip_level
+ds:131e lines_to_level
+ds:1320 wall_pieces            # [32][15] far ptrs to stored pieces
