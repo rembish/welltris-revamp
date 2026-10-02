@@ -2,15 +2,16 @@
  * The original only ever drives the PC speaker with Turbo C's sound(f): the PIT gets the integer
  * divisor 1193180 / f, so the tone is 1193180 / (1193180 / f) Hz, a square wave. The core logs
  * each change with the PIT clock it happened at; here the log is played back sample by sample
- * on the same clock, slightly behind real time so that changes are never late.
+ * on the same clock, rendered a little ahead of real time so the stream never runs dry (a change
+ * logged for a moment already rendered takes effect at the next sample).
  */
 #include "audio.h"
 #include <SDL.h>
 #include <math.h>
 #include <string.h>
 
-#define RATE    44100
-#define LATENCY (WT_PIT_HZ / 20) /* render 50 ms behind */
+#define RATE  44100
+#define AHEAD (WT_PIT_HZ / 12) /* keep ~80 ms queued */
 
 static SDL_AudioDeviceID dev;
 static float volume = 0.16f;
@@ -59,9 +60,9 @@ void audio_follow(const wt_game *g, uint64_t until)
     static float buf[RATE / 4];
     int n = 0;
     if (!dev) return;
-    if (until < LATENCY) return;
-    until -= LATENCY;
-    if (g->spk_n - rd > WT_SPK) rd = g->spk_n - WT_SPK; /* fell behind: skip */
+    until += AHEAD;
+    if (pos < (until - AHEAD - AHEAD) * RATE) pos = (until - AHEAD) * RATE; /* after a stall */
+    if (g->spk_n - rd > WT_SPK) rd = g->spk_n - WT_SPK;                     /* fell behind: skip */
     while (pos < until * RATE && n < (int)(sizeof buf / sizeof buf[0])) {
         while (rd != g->spk_n && g->spk_at[rd % WT_SPK] * RATE <= pos) {
             hz = tone(g->spk_hz[rd % WT_SPK]);

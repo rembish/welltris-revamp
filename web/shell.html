@@ -41,7 +41,7 @@
     onRuntimeInitialized: function () { document.getElementById('status').textContent = ''; },
   };
   window.addEventListener('keydown', function (e) {
-    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].indexOf(e.key) >= 0)
+    if ([' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].indexOf(e.key) >= 0)
       e.preventDefault();
   }, { passive: false });
   // no pinch-zoom, double-tap zoom or pull-to-refresh on phones

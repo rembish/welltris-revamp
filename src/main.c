@@ -254,8 +254,13 @@ static void advance_game(void)
         clock_set(A.g.clock);
         now = A.g.clock;
     }
-    /* typematic repeat of the held key */
+    /* typematic repeat of the held key; keys typed during a blocking effect are flushed by the
+       original before it reads the keyboard again, so they are dropped here */
     while (A.held_key && A.next_repeat <= now) {
+        if (A.busy) {
+            A.next_repeat += REPEAT_RATE;
+            continue;
+        }
         wt_push_key(&A.g, A.next_repeat, A.held_key);
         A.next_repeat += REPEAT_RATE;
     }
@@ -340,7 +345,7 @@ static void game_key(uint16_t key, SDL_Keycode sym)
 {
     uint64_t now = clock_now();
     if (!key || A.ovl != O_NONE) return;
-    wt_push_key(&A.g, now, key);
+    if (!A.busy) wt_push_key(&A.g, now, key);
     A.held_key = key;
     A.held_sym = sym;
     A.next_repeat = now + REPEAT_DELAY;
