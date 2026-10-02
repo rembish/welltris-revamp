@@ -25,6 +25,7 @@
 #define WT_POOL  (WT_SLOTS + 2)
 #define WT_KEYQ  256
 #define WT_KBUF  15 /* BIOS type-ahead buffer */
+#define WT_SPK   1024 /* speaker log entries */
 
 /* get_key() codes: ASCII, or scan code | 0x8000 for extended keys */
 #define WT_KEY_UP    0x8048u
@@ -126,6 +127,12 @@ typedef struct {
     /* presentation hints, set by the core for the frontend */
     uint32_t effects;     /* WT_FX_* since last cleared by the frontend */
     uint8_t fx_walls[4];  /* walls in the last freeze/thaw effect */
+    uint64_t fx_at;       /* clock at which the last blocking effect started */
+    /* PC speaker: every change (Hz, 0 = off) with the clock it happened at. The frontend
+     * keeps its own read position; spk_n counts all entries ever written. */
+    uint64_t spk_at[WT_SPK];
+    uint16_t spk_hz[WT_SPK];
+    uint32_t spk_n;
 } wt_game;
 
 enum {
@@ -150,6 +157,11 @@ void wt_resume(wt_game *g, uint64_t clock);
 void wt_end_game(wt_game *g, int restart);
 uint32_t wt_ticks(const wt_game *g);
 uint16_t wt_rand(wt_game *g);
+/* sound_sweep (03fa): count notes from freq, stepping by step (up or down), each len ticks,
+ * followed by gap ticks of silence when gap != 0; silence at the end if `silence`. Advances
+ * the clock even with sound off, like the original. Used by the frontend for the tunes it
+ * plays outside the play loop. */
+void wt_sweep(wt_game *g, int freq, int step, int up, int count, uint16_t gap, uint16_t len, int silence);
 /* cells of a piece as the original draws it: returns count, fills col/row */
 int wt_piece_cells(const wt_piece *p, int *col, int *row, int max);
 /* the piece that would be built for (class, index), at column 0 row 0 */

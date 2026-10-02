@@ -47,13 +47,28 @@ static void vsync(wt_game *g)
     set_clock(g, (g->clock / WT_FRAME + 1) * WT_FRAME);
 }
 
-/* sound_sweep (03fa): only its timing matters here, the frontend plays the sounds */
-static void sweep(wt_game *g, int count, uint16_t gap, uint16_t len)
+static void speaker(wt_game *g, int hz)
+{
+    uint32_t i;
+    if (!g->sound_on && hz) return;
+    i = g->spk_n % WT_SPK;
+    g->spk_at[i] = g->clock;
+    g->spk_hz[i] = (uint16_t)hz;
+    g->spk_n++;
+}
+
+void wt_sweep(wt_game *g, int freq, int step, int up, int count, uint16_t gap, uint16_t len, int silence)
 {
     for (; count > 0; count--) {
+        if (freq > 0) speaker(g, freq);
         delay(g, len);
-        if (gap) delay(g, gap);
+        if (gap) {
+            speaker(g, 0);
+            delay(g, gap);
+        }
+        freq = up ? freq + step : freq - step;
     }
+    if (silence) speaker(g, 0);
 }
 
 /* ---- keyboard ---- */
@@ -555,20 +570,22 @@ static void clear_lines_effect(wt_game *g, uint8_t rows, uint8_t cols)
 {
     int i;
     g->effects |= WT_FX_LINES;
+    g->fx_at = g->clock;
     for (i = 0; i < 0x1d; i++) {
         vsync(g);
-        sweep(g, 1, 0, 1);
+        wt_sweep(g, 600, 0, 0, 1, 0, 1, 1);
     }
     delay(g, 0x38);
     i = collapse(g, rows, cols);
     vsync(g);
-    if (i) sweep(g, 8, 0, 2);
+    if (i) wt_sweep(g, 600, 0x32, 0, 8, 0, 2, 1);
     delay(g, 0x38);
+    speaker(g, 0);
     i = settle(g);
     vsync(g);
     if (i) {
         g->effects |= WT_FX_SETTLE;
-        sweep(g, 8, 0, 2);
+        wt_sweep(g, 600, 0x32, 0, 8, 0, 2, 1);
     }
 }
 
@@ -577,10 +594,11 @@ static void freeze_effect(wt_game *g, const uint8_t *walls, uint32_t fx)
 {
     int i;
     g->effects |= fx;
+    g->fx_at = g->clock;
     memcpy(g->fx_walls, walls, 4);
     for (i = 0; i < 0x1d; i++) {
         vsync(g);
-        sweep(g, 1, 0, 1);
+        wt_sweep(g, 2000, 0x1e, 0, 1, 0, 1, 1);
     }
 }
 
@@ -591,12 +609,12 @@ static int alt_keys(wt_game *g, uint16_t key, int *event)
     switch (key) {
     case WT_KEY_ALT_A:
     case WT_KEY_ALT_R:
-        delay(g, 8);
+        wt_sweep(g, 600, 0, 0, 1, 0, 8, 1);
         *event = key == WT_KEY_ALT_A ? WT_EV_ABORT : WT_EV_RESTART;
         return 1;
     case WT_KEY_ALT_I: g->skip_level = 0xff; return 1;
     case WT_KEY_ALT_P:
-        delay(g, 8);
+        wt_sweep(g, 600, 0, 0, 1, 0, 8, 1);
         *event = WT_EV_PAUSE;
         return 1;
     case WT_KEY_ALT_N:
@@ -631,7 +649,7 @@ static uint8_t play_key(wt_game *g, int *event)
         /* the key code doubles as the number of quarter turns (see notes) */
         if (rotate(g, &g->piece, key, 0)) {
             g->effects |= WT_FX_MOVE_FAIL;
-            sweep(g, 1, 0, 2);
+            wt_sweep(g, 300, 0, 0, 1, 0, 2, 1);
         }
         goto drain;
     }
@@ -658,7 +676,7 @@ static uint8_t play_key(wt_game *g, int *event)
     }
     if (dir && move_lr(g, &g->piece, dir)) {
         g->effects |= WT_FX_MOVE_FAIL;
-        sweep(g, 1, 0, 2);
+        wt_sweep(g, 300, 0, 0, 1, 0, 2, 1);
         act = 0;
     }
 drain:
@@ -722,8 +740,8 @@ void wt_resume(wt_game *g, uint64_t clock) { set_clock(g, clock); }
 void wt_end_game(wt_game *g, int restart)
 {
     if (g->sound_on) { /* 1ac8: the "abort" tune */
-        sweep(g, 0xf, 1, 2);
-        sweep(g, 0x19, 1, 2);
+        wt_sweep(g, 0x226, 0x14, 1, 0xf, 1, 2, 0);
+        wt_sweep(g, 0x1c2, 0xf, 0, 0x19, 1, 2, 1);
     }
     g->game_over = 0xff;
     g->aborted = 0xff;
@@ -751,7 +769,7 @@ static void next_turn(wt_game *g)
         vsync(g);
         if (i) {
             g->effects |= WT_FX_SETTLE;
-            sweep(g, 8, 0, 2);
+            wt_sweep(g, 700, 0x32, 0, 8, 0, 2, 1);
         }
     }
     if (find_full_lines(g, &rows, &cols)) {
@@ -763,10 +781,10 @@ static void next_turn(wt_game *g)
         uint32_t s;
         if (n && floor_empty_bonus(g)) {
             g->effects |= WT_FX_FLOOR_EMPTY;
-            sweep(g, 8, 1, 4);
+            wt_sweep(g, 300, 0x14, 1, 8, 1, 4, 1);
             delay(g, 8);
-            sweep(g, 0xf, 1, 4);
-            sweep(g, 1, 0, 0x3c);
+            wt_sweep(g, 800, 0x14, 1, 0xf, 1, 4, 0);
+            wt_sweep(g, 0x438, 0, 0, 1, 0, 0x3c, 1);
         }
         s = g->score + score_for_piece(g, &g->piece, n, g->bonus_piece);
         g->score = s;
@@ -774,7 +792,10 @@ static void next_turn(wt_game *g)
     }
     if (n) g->lines += n;
     if (g->bonus_piece) {
-        sweep(g, 5, 1, 10);
+        if (!g->stored)
+            wt_sweep(g, 300, 0x32, 1, 5, 1, 10, 1);
+        else
+            wt_sweep(g, 500, 0x32, 0, 5, 1, 10, 1);
         g->level_up = 0xff;
         g->bonus_piece = 0;
     }
@@ -782,9 +803,10 @@ static void next_turn(wt_game *g)
         uint8_t idx = g->piece_index, cls = g->piece_class;
         g->bonus_piece = 0xff;
         g->effects |= WT_FX_LEVEL_BONUS;
-        sweep(g, 1, 10, 0xf); /* 42d2 */
-        sweep(g, 1, 0, 0xf);
-        sweep(g, 1, 0, 0x28);
+        g->fx_at = g->clock;
+        wt_sweep(g, 200, 0, 0, 1, 10, 0xf, 0); /* 42d2 */
+        wt_sweep(g, 200, 0, 0, 1, 0, 0xf, 0);
+        wt_sweep(g, 600, 0, 0, 1, 0, 0x28, 1);
         choose_piece(g);
         spawn_piece(g);
         g->piece_index = idx;

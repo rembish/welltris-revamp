@@ -26,7 +26,7 @@ MUTANTS = [
     ('no vsync after a pass', '        vsync(g);\n        if (g->level_up)', '        if (g->level_up)'),
     ('spawn column off by one', 'p->col = (int16_t)(a + wt_rand(g) % 3 + 3);', 'p->col = (int16_t)(a + wt_rand(g) % 3 + 2);'),
     ('stored cells not marked', 'if (!skip && p->row < 0) p->codes[idx] |= 0x80;', ';'),
-    ('level bonus tune shorter', 'sweep(g, 1, 10, 0xf); /* 42d2 */', 'sweep(g, 1, 9, 0xf); /* 42d2 */'),
+    ('level bonus tune shorter', 'wt_sweep(g, 200, 0, 0, 1, 10, 0xf, 0); /* 42d2 */', 'wt_sweep(g, 200, 0, 0, 1, 9, 0xf, 0); /* 42d2 */'),
     ('wall cross ignored', 'if (cross && below) g->wall_cross = 0xff;', ';'),
 ]
 
