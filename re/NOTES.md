@@ -197,3 +197,13 @@ clips, which the port draws itself.
 the git-ignored `assets-local/`: line art is traced (vtracer) and rasterised, dithered pictures
 are de-dithered (blur, bilateral filtering, sharpening). Only builds made with
 `-DWT_LOCAL_ASSETS=ON` embed them; nothing derived from the original art is committed.
+
+## Screen orientation
+
+The ring of 32 columns runs counter-clockwise on screen: wall 0 is the left wall (columns
+top→bottom), 1 the bottom (left→right), 2 the right (bottom→top), 3 the top (right→left);
+row 11 is at the rim. `wall_to_floor` then puts floor `x` top→bottom and `y` left→right.
+This follows from the per-wall key remapping in `handle_play_key` (keys move pieces in their
+screen direction) and was checked in DOSBox-X: on the top wall Up does nothing and Left moves
+the piece left. `draw_cell` (`3699`) draws one quadrant's sprites and mirrors them for the rest
+(columns 4–19 flipped one way, 12–27 the other).
