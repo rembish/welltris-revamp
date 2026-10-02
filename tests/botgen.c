@@ -88,9 +88,10 @@ int main(int argc, char **argv)
     unsigned long long clock;
     unsigned long seed, pieces, n;
     int i, noise_pct, fill = 0, nfill = 0;
-    uint8_t fx[64], fy[64], fc[64];
+    uint8_t fx[64] = { 0 }, fy[64] = { 0 }, fc[64] = { 0 };
     if (argc < 10) {
-        fprintf(stderr, "usage: %s seed piece_set level preview fixed_keys clock pieces noise noise_seed\n", argv[0]);
+        fprintf(stderr, "usage: %s seed piece_set level preview fixed_keys clock pieces noise noise_seed\n",
+                argv[0]);
         return 2;
     }
     seed = strtoul(argv[1], NULL, 10);
@@ -106,6 +107,7 @@ int main(int argc, char **argv)
     if (argc > 10) fill = atoi(argv[10]);
     wt_session_init(&g, (uint32_t)seed, clock);
     wt_new_game(&g, &o);
+    // cppcheck-suppress knownConditionTrueFalse ; set from argv above
     if (fill) {
         /* the gap is on an edge line, so a piece can slide off a wall into it */
         int line = noise() % 2 ? 7 : 0, horiz = (int)(noise() % 2), x, y, len = (int)(1 + noise() % 3);
@@ -126,8 +128,10 @@ int main(int argc, char **argv)
         uint32_t ns = noise_state;
         if ((int)(noise() % 100) < noise_pct) {
             /* a sloppy move now and then: random keys, sometimes alt keys */
-            static const uint16_t junk[] = { 'K', 'k', '5', 'I', 'M', 'J', 'L', '8', '2', '4', '6', 'x',
-                                             WT_KEY_UP, WT_KEY_DOWN, WT_KEY_LEFT, WT_KEY_RIGHT, WT_KEY_ALT_N };
+            static const uint16_t junk[] = { 'K',          'k',         '5',       'I',         'M',
+                                             'J',          'L',         '8',       '2',         '4',
+                                             '6',          'x',         WT_KEY_UP, WT_KEY_DOWN, WT_KEY_LEFT,
+                                             WT_KEY_RIGHT, WT_KEY_ALT_N };
             int k = (int)(noise() % 6);
             for (i = 0; i < k; i++) press(&g, junk[noise() % (sizeof junk / sizeof junk[0])], 1);
             if (!g.piece_active) {

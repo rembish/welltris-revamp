@@ -151,6 +151,9 @@ void wt_wall_to_floor(int *col, int *row)
     }
 }
 
+/* columns are 0..31 (they wrap); the masks only make that visible to the analyzers */
+static int wall_of(int col) { return (col >> 3) & 3; }
+
 static int on_floor(int x, int y) { return x >= 0 && x < WT_FLOOR && y >= 0 && y < WT_FLOOR; }
 
 /* piece_collides (1f3b) */
@@ -170,11 +173,11 @@ static uint8_t collides(wt_game *g, const wt_piece *p)
                 else
                     hit = 0;
             } else {
-                hit |= g->wall[c][r];
+                hit |= g->wall[c & 31][r];
             }
         }
-        if ((c >> 3) != g->current_wall) cross = 0xff;
-        hit |= g->frozen[c >> 3];
+        if (wall_of(c) != g->current_wall) cross = 0xff;
+        hit |= g->frozen[wall_of(c)];
     }
     if (cross && below) g->wall_cross = 0xff;
     return hit;
@@ -184,7 +187,7 @@ static uint8_t collides(wt_game *g, const wt_piece *p)
 static uint8_t put_cell(wt_game *g, int col, int row, uint8_t color, uint8_t store)
 {
     if (row >= 0 && row < WT_ROWS) {
-        if (store) g->wall[col][row] = color;
+        if (store) g->wall[col & 31][row] = color;
         return 0xff;
     }
     if (row < 0) {
@@ -234,11 +237,10 @@ int wt_piece_cells(const wt_piece *p, int *col, int *row, int max)
 static uint8_t rotate(wt_game *g, wt_piece *p, uint16_t tries, uint8_t garbage)
 {
     uint8_t hit = garbage;
-    int i;
     if (p->rec != 0x42 && p->rec != 0x6e) {
         do {
             if (++p->rot > 3) p->rot = 0;
-            for (i = 1; p->codes[i]; i++) {
+            for (int i = 1; p->codes[i]; i++) {
                 if ((p->codes[i] & 0x7f) == 5) continue;
                 p->codes[i]++;
                 if ((p->codes[i] & 0x7f) > 4) p->codes[i] = (uint8_t)((p->codes[i] & 0x80) | 1);
@@ -247,7 +249,7 @@ static uint8_t rotate(wt_game *g, wt_piece *p, uint16_t tries, uint8_t garbage)
         } while (!hit && !g->wall_cross && --tries != 0);
         if (hit || g->wall_cross) {
             if (p->rot-- == 0) p->rot = 3;
-            for (i = 0; p->codes[i]; i++) {
+            for (int i = 0; p->codes[i]; i++) {
                 if ((p->codes[i] & 0x7f) == 5) continue;
                 p->codes[i]--;
                 if ((p->codes[i] & 0x7f) == 0) p->codes[i] = (uint8_t)((p->codes[i] & 0x80) | 4);
@@ -347,7 +349,7 @@ static void spawn_piece(wt_game *g)
         int a = (wt_rand(g) % 4) << 3;
         p->col = (int16_t)(a + wt_rand(g) % 3 + 3);
     } while (collides(g, p));
-    while (g->frozen[p->col >> 3]) {
+    while (g->frozen[wall_of(p->col)]) {
         p->col = (int16_t)(p->col + 8);
         if (p->col > 0x20) p->col = (int16_t)(p->col - 0x20);
     }
@@ -395,8 +397,8 @@ static void freeze_walls(wt_game *g, const wt_piece *p, uint8_t *out)
     memset(out, 0, 4);
     while (next_cell(p->codes, &c, &r, &skip, &idx)) {
         if (skip || r < 0) continue;
-        g->frozen[c >> 3] = 0xff;
-        out[c >> 3] = 0xff;
+        g->frozen[wall_of(c)] = 0xff;
+        out[wall_of(c)] = 0xff;
     }
 }
 
@@ -427,7 +429,7 @@ static uint8_t settle(wt_game *g)
             while (next_cell(p->codes, &c, &r, &skip, &idx)) {
                 if (skip || r < 0) continue;
                 g->wall[c][r] = 0;
-                if (g->frozen[c >> 3]) stuck = 0xff;
+                if (g->frozen[wall_of(c)]) stuck = 0xff;
             }
             g->slot[col * 15 + row + 3] = -1;
             g->floor_limit = -4;
@@ -626,7 +628,10 @@ static int alt_keys(wt_game *g, uint16_t key, int *event)
     }
 }
 
-static int is_key(uint16_t k, uint16_t a, uint16_t b, uint16_t c, uint16_t d) { return k == a || k == b || k == c || k == d; }
+static int is_key(uint16_t k, uint16_t a, uint16_t b, uint16_t c, uint16_t d)
+{
+    return k == a || k == b || k == c || k == d;
+}
 
 /* handle_play_key (149f): one key, the rest of the buffer is thrown away */
 static uint8_t play_key(wt_game *g, int *event)
@@ -828,7 +833,7 @@ static void next_turn(wt_game *g)
 static void iteration(wt_game *g, int *event)
 {
     wt_piece start = g->piece;
-    uint8_t forced = 0, top, walls[4];
+    uint8_t forced = 0;
     int reached = 0;
     update_current_wall(g, &g->piece);
     if (!g->dropping) {
@@ -864,9 +869,10 @@ static void iteration(wt_game *g, int *event)
             if (g->old.col != -1) draw_piece(g, &g->old, 0, 0xff);
             g->old = start;
         }
-        top = draw_piece(g, &g->piece, 1, g->landed);
+        uint8_t top = draw_piece(g, &g->piece, 1, g->landed);
         if (top && g->landed) {
             if (top < 0xb) {
+                uint8_t walls[4];
                 store_wall_piece(g, &g->piece);
                 freeze_walls(g, &g->piece, walls);
                 freeze_effect(g, walls, WT_FX_FREEZE);

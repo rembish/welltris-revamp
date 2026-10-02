@@ -14,10 +14,10 @@
 
 static SDL_AudioDeviceID dev;
 static float volume = 0.16f;
-static uint64_t pos;      /* PIT clock rendered up to, times RATE (exact: one sample = PIT_HZ) */
-static uint32_t rd;       /* speaker log entries consumed */
-static double hz, phase;  /* current tone (0 = silent) */
-static float lp;          /* one-pole low-pass state */
+static uint64_t pos;     /* PIT clock rendered up to, times RATE (exact: one sample = PIT_HZ) */
+static uint32_t rd;      /* speaker log entries consumed */
+static double hz, phase; /* current tone (0 = silent) */
+static float lp;         /* one-pole low-pass state */
 
 void audio_init(void)
 {

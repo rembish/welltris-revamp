@@ -23,7 +23,7 @@
 extern const unsigned char font_ttf[];
 extern const int font_ttf_len;
 
-#define REPO_URL "https://github.com/rembish/welltris-revamp"
+#define REPO_URL     "https://github.com/rembish/welltris-revamp"
 /* BIOS typematic defaults: 500 ms delay, 10.9 characters per second */
 #define REPEAT_DELAY ((uint64_t)WT_PIT_HZ / 2)
 #define REPEAT_RATE  ((uint64_t)(WT_PIT_HZ / 10.9))
@@ -267,7 +267,8 @@ static void advance_game(void)
         A.g.effects = 0;
         fx0 = 0;
         ev = wt_iterate(&A.g, now);
-        if (A.g.clock > now && (A.g.effects & (WT_FX_LINES | WT_FX_FREEZE | WT_FX_THAW | WT_FX_LEVEL_BONUS))) {
+        if (A.g.clock > now &&
+            (A.g.effects & (WT_FX_LINES | WT_FX_FREEZE | WT_FX_THAW | WT_FX_LEVEL_BONUS))) {
             A.busy = 1;
             A.busy_fx = A.g.effects & ~fx0;
             memcpy(A.disp.row_full, A.g.row_full, sizeof A.disp.row_full);
@@ -364,7 +365,8 @@ static void setup_move(int d) { A.cursor = (A.cursor + d + 9) % 9; }
 
 static void setup_value(int d)
 {
-    if (A.cursor < 5) A.opt[A.cursor] = (uint8_t)((A.opt[A.cursor] + opt_count[A.cursor] + d) % opt_count[A.cursor]);
+    if (A.cursor < 5)
+        A.opt[A.cursor] = (uint8_t)((A.opt[A.cursor] + opt_count[A.cursor] + d) % opt_count[A.cursor]);
 }
 
 static void setup_activate(void)
@@ -581,11 +583,14 @@ static void glow_box(box b, rgba c, float t, int strong)
 {
     float p = 0.55f + 0.45f * sinf(t * 5.f);
     gfx_rect(b.x, b.y, b.w, b.h, rgba_alpha(c, strong ? 0.28f * p + 0.1f : 0.16f));
-    gfx_rect_outline(b.x - 1, b.y - 1, b.w + 2, b.h + 2, strong ? 2.5f : 1.5f, rgba_alpha(c, strong ? p : 0.7f));
+    gfx_rect_outline(b.x - 1, b.y - 1, b.w + 2, b.h + 2, strong ? 2.5f : 1.5f,
+                     rgba_alpha(c, strong ? p : 0.7f));
 }
 
 /* setup value boxes and cursor positions, from the tables at ds:0476 and ds:03bc */
-static const float val_x[5][5] = { { 128, 152, 176 }, { 128, 168 }, { 168, 192 }, { 80, 128 }, { 88, 128, 168, 208, 248 } };
+static const float val_x[5][5] = {
+    { 128, 152, 176 }, { 128, 168 }, { 168, 192 }, { 80, 128 }, { 88, 128, 168, 208, 248 }
+};
 static const float val_y[5] = { 58, 88, 118, 171, 244 };
 static const float val_w[5] = { 16, 32, 16, 32, 24 };
 static const float val_wk[2][5] = { { 16, 32, 16, 32, 24 }, { 16, 40, 16, 40, 24 } };
@@ -605,12 +610,14 @@ static void draw_setup_art(float t)
     for (int i = 0; i < 5; i++) {
         int v = A.opt[i];
         float w = i == 1 || i == 3 ? val_wk[v][i] : val_w[i];
-        glow_box(map43(&s, val_x[i][v] - 1, val_y[i] - 1, w + 2, (i == 4 ? 12 : 15) + 2), rgb_hex(0x6ff7ff, 1), t, 0);
+        glow_box(map43(&s, val_x[i][v] - 1, val_y[i] - 1, w + 2, (i == 4 ? 12 : 15) + 2),
+                 rgb_hex(0x6ff7ff, 1), t, 0);
         for (int k = 0; k < opt_count[i]; k++)
-            hit_val[i][k] = map43(&s, val_x[i][k] - 2, val_y[i] - 3, (i == 1 || i == 3 ? val_wk[k][i] : val_w[i]) + 4,
-                                  (i == 4 ? 12 : 15) + 6);
+            hit_val[i][k] = map43(&s, val_x[i][k] - 2, val_y[i] - 3,
+                                  (i == 1 || i == 3 ? val_wk[k][i] : val_w[i]) + 4, (i == 4 ? 12 : 15) + 6);
     }
-    for (int i = 0; i < 9; i++) hit_item[i] = map43(&s, item_box[i][0], item_box[i][1], item_box[i][2], item_box[i][3]);
+    for (int i = 0; i < 9; i++)
+        hit_item[i] = map43(&s, item_box[i][0], item_box[i][1], item_box[i][2], item_box[i][3]);
     hit_start = map43(&s, 354, 102, 110, 34);
     const float *b = item_box[A.cursor];
     glow_box(map43(&s, b[0], b[1], b[2], b[3]), rgb_hex(0xffd166, 1), t, 1);
@@ -618,17 +625,19 @@ static void draw_setup_art(float t)
 
 static void draw_setup_modern(float t)
 {
-    static const char *labels[9] = { "LEVEL", "SOUND", "MOVE MODE", "NEXT PIECE", "SPEED", "HI SCORE", "INFO",
-                                     "SAVE OPTIONS",
+    static const char *labels[9] = { "LEVEL",      "SOUND",    "MOVE MODE", "NEXT PIECE",
+                                     "SPEED",      "HI SCORE", "INFO",      "SAVE OPTIONS",
 #ifdef __EMSCRIPTEN__
                                      "SOURCE CODE"
 #else
                                      "QUIT"
 #endif
     };
-    static const char *vals[5][5] = {
-        { "1", "2", "3" }, { "ON", "OFF" }, { "1", "2" }, { "ON", "OFF" }, { "1.0", "2.0", "3.0", "4.0", "5.0" }
-    };
+    static const char *vals[5][5] = { { "1", "2", "3" },
+                                      { "ON", "OFF" },
+                                      { "1", "2" },
+                                      { "ON", "OFF" },
+                                      { "1.0", "2.0", "3.0", "4.0", "5.0" } };
     float W = (float)A.w, H = (float)A.h, s = fminf(W / 30.f, H / 22.f);
     box p = { (W - s * 26) / 2, (H - s * 17.5f) / 2, s * 26, s * 17.5f };
     view_scene((box){ 0, 0, W, H }, A.opt[OPT_SPEED], t);
@@ -649,9 +658,11 @@ static void draw_setup_modern(float t)
             for (int v = 0; v < opt_count[i]; v++) {
                 float vx = x + s * (6.2f + (float)v * (i == 4 ? 1.9f : 2.3f));
                 int on = A.opt[i] == v;
-                hit_val[i][v] = (box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f };
-                if (on) glow_box((box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f },
-                                 rgb_hex(0x6ff7ff, 1), t, 0);
+                hit_val[i][v] =
+                    (box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f };
+                if (on)
+                    glow_box((box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f },
+                             rgb_hex(0x6ff7ff, 1), t, 0);
                 font_draw(vx + s * (i == 4 ? 0.62f : 0.75f), y, s * 0.9f,
                           on ? rgb_hex(0x6ff7ff, 1) : rgb_hex(0x5d6680, 1), ALIGN_CENTER, vals[i][v]);
             }
@@ -660,7 +671,8 @@ static void draw_setup_modern(float t)
     hit_start = sb;
     gfx_round_rect(sb.x, sb.y, sb.w, sb.h, s * 0.3f, rgb_hex(0x7a1f1f, 1));
     font_draw(sb.x + sb.w / 2, sb.y + s * 0.25f, s * 0.9f, rgb_hex(0xffffff, 1), ALIGN_CENTER, "START GAME");
-    font_draw(sb.x + sb.w / 2, sb.y + s * 1.25f, s * 0.55f, rgb_hex(0xffd2c4, 1), ALIGN_CENTER, "(SPACE BAR)");
+    font_draw(sb.x + sb.w / 2, sb.y + s * 1.25f, s * 0.55f, rgb_hex(0xffd2c4, 1), ALIGN_CENTER,
+              "(SPACE BAR)");
 }
 
 static void draw_title(float t)
@@ -672,8 +684,10 @@ static void draw_title(float t)
     } else {
         float s = fminf(W, H * 1.4f);
         view_scene((box){ 0, 0, W, H }, 0, t);
-        font_draw(W / 2, H * 0.12f, s * 0.04f, rgb_hex(0x1a1414, 0.85f), ALIGN_CENTER, "Spectrum HoloByte presents...");
-        font_draw(W / 2 + s * 0.006f, H * 0.2f + s * 0.006f, s * 0.15f, rgb_hex(0x2a0a0a, 0.8f), ALIGN_CENTER, "WELLTRIS");
+        font_draw(W / 2, H * 0.12f, s * 0.04f, rgb_hex(0x1a1414, 0.85f), ALIGN_CENTER,
+                  "Spectrum HoloByte presents...");
+        font_draw(W / 2 + s * 0.006f, H * 0.2f + s * 0.006f, s * 0.15f, rgb_hex(0x2a0a0a, 0.8f), ALIGN_CENTER,
+                  "WELLTRIS");
         font_draw(W / 2, H * 0.2f, s * 0.15f, rgb_hex(0xb3261e, 1), ALIGN_CENTER, "WELLTRIS");
     }
     if (!art_have(ART_TITLE))
@@ -701,9 +715,10 @@ static void draw_credits(float t)
     float fs = b.h / ((float)n + 4.5f);
     font_draw(b.x + b.w / 2, b.y + fs * 0.9f, fs * 1.2f, rgb_hex(0xffd166, 1), ALIGN_CENTER, "WELLTRIS");
     for (int i = 0; i < n; i++)
-        font_draw(b.x + b.w * 0.09f, b.y + fs * (2.8f + (float)i), fs * 0.8f, rgb_hex(0xf2f2f2, 1), ALIGN_LEFT,
-                  credits_text[i]);
-    font_draw(W / 2, b.y + b.h + fs * 0.5f, fs * 0.8f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER, "< press any key >");
+        font_draw(b.x + b.w * 0.09f, b.y + fs * (2.8f + (float)i), fs * 0.8f, rgb_hex(0xf2f2f2, 1),
+                  ALIGN_LEFT, credits_text[i]);
+    font_draw(W / 2, b.y + b.h + fs * 0.5f, fs * 0.8f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER,
+              "< press any key >");
 }
 
 static void draw_hof(float t)
@@ -757,11 +772,13 @@ static void draw_hof(float t)
         box d = { W / 2 - s * 8, H / 2 - s * 2, s * 16, s * 4 };
         gfx_round_rect(d.x, d.y, d.w, d.h, s * 0.3f, rgb_hex(0x8a1212, 0.97f));
         gfx_rect_outline(d.x, d.y, d.w, d.h, 3, rgb_hex(0xd9a441, 1));
-        font_draw(W / 2, d.y + s * 0.4f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_CENTER, "Please Enter Your Name:");
+        font_draw(W / 2, d.y + s * 0.4f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_CENTER,
+                  "Please Enter Your Name:");
         font_drawf(W / 2, d.y + s * 1.9f, s, rgb_hex(0xffffff, 1), ALIGN_CENTER, "%s%s", A.name,
                    fmodf(t, 1.f) < 0.5f ? "_" : " ");
     } else {
-        font_draw(W / 2, H * 0.95f, fminf(W, H) * 0.028f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER, "< press any key >");
+        font_draw(W / 2, H * 0.95f, fminf(W, H) * 0.028f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER,
+                  "< press any key >");
     }
 }
 
@@ -803,9 +820,7 @@ static void draw_game(float t)
             fx.message = "BONUS PIECE";
         }
     }
-    if (A.ovl == O_OVER || g->game_over) {
-        fx.message = "GAME OVER";
-    }
+    if (A.ovl == O_OVER || g->game_over) { fx.message = "GAME OVER"; }
     view_game(g, &L, &fx);
     if (A.ovl == O_PAUSE) dialog("-- Game Paused --", "press: alt-P to resume", "alt-Q to quit");
     if (A.ovl == O_CONFIRM) {
@@ -813,7 +828,9 @@ static void draw_game(float t)
         dialog("Are you sure you want", what[A.confirm_what], "[ y or n ]");
     }
     if (A.ovl == O_TOP) dialog("Congratulations!!", "Top Score Attained", "[press any key]");
-    touch_layout(&L, A.ovl == O_CONFIRM ? TOUCH_CONFIRM : A.ovl == O_NONE && !g->game_over ? TOUCH_GAME : TOUCH_NONE);
+    touch_layout(&L, A.ovl == O_CONFIRM                 ? TOUCH_CONFIRM
+                     : A.ovl == O_NONE && !g->game_over ? TOUCH_GAME
+                                                        : TOUCH_NONE);
     touch_draw(t);
 }
 
@@ -842,7 +859,8 @@ static void render(void)
     }
     if (A.toast_until > A.now) {
         float s = fminf((float)A.w, (float)A.h) * 0.035f, tw = font_width(s, A.toast) + s * 2;
-        gfx_round_rect(((float)A.w - tw) / 2, (float)A.h - s * 3, tw, s * 1.8f, s * 0.4f, rgb_hex(0x2ab7c0, 0.95f));
+        gfx_round_rect(((float)A.w - tw) / 2, (float)A.h - s * 3, tw, s * 1.8f, s * 0.4f,
+                       rgb_hex(0x2ab7c0, 0.95f));
         font_draw((float)A.w / 2, (float)A.h - s * 2.6f, s, rgb_hex(0x04101a, 1), ALIGN_CENTER, A.toast);
     }
     gfx_flush();
@@ -977,7 +995,8 @@ static int shot_mode(int argc, char **argv)
         start_game();
         /* play: keys "seconds:hexkey,..." at their times, a bot-free random walk otherwise */
         const char *k = keys;
-        for (double t = 0; t < secs && A.scr == S_GAME; t += 1.0 / 60) {
+        for (long f = 0; f < (long)(secs * 60) && A.scr == S_GAME; f++) {
+            double t = (double)f / 60;
             A.now = 1.0 + t;
             while (*k) {
                 double kt;
@@ -1006,8 +1025,8 @@ static int shot_mode(int argc, char **argv)
     SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, A.w, A.h, 32, SDL_PIXELFORMAT_ARGB8888);
     SDL_RenderReadPixels(A.ren, NULL, SDL_PIXELFORMAT_ARGB8888, s->pixels, s->pitch);
     SDL_SaveBMP(s, out);
-    printf("score=%lu lines=%lu level=%d over=%d\n", (unsigned long)A.g.score, (unsigned long)A.g.lines, A.g.level,
-           A.g.game_over);
+    printf("score=%lu lines=%lu level=%d over=%d\n", (unsigned long)A.g.score, (unsigned long)A.g.lines,
+           A.g.level, A.g.game_over);
     return 1;
 }
 
@@ -1023,7 +1042,8 @@ int main(int argc, char **argv)
     }
     Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
     A.win = SDL_CreateWindow("Welltris", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, flags);
-    A.ren = A.win ? SDL_CreateRenderer(A.win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : NULL;
+    A.ren =
+        A.win ? SDL_CreateRenderer(A.win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : NULL;
     if (A.win && !A.ren) A.ren = SDL_CreateRenderer(A.win, -1, 0);
     if (!A.win || !A.ren) {
         fprintf(stderr, "SDL: %s\n", SDL_GetError());

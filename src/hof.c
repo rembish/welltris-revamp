@@ -2,7 +2,10 @@
 #include "store.h"
 #include <string.h>
 
-static int32_t rd32(const unsigned char *p) { return (int32_t)((uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24); }
+static int32_t rd32(const unsigned char *p)
+{
+    return (int32_t)((uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24);
+}
 
 static void wr32(unsigned char *p, int32_t v)
 {

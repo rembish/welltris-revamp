@@ -14,8 +14,8 @@
 
 #include <stdint.h>
 
-#define WT_TICK  6375u  /* PIT clocks per game tick */
-#define WT_FRAME 19886u /* PIT clocks per 60 Hz frame */
+#define WT_TICK   6375u  /* PIT clocks per game tick */
+#define WT_FRAME  19886u /* PIT clocks per 60 Hz frame */
 #define WT_PIT_HZ 1193182u
 
 #define WT_COLS  32 /* four walls of 8 columns, one ring */
@@ -24,7 +24,7 @@
 #define WT_SLOTS (WT_COLS * 15) /* stored wall pieces by (column, row + 3) */
 #define WT_POOL  (WT_SLOTS + 2)
 #define WT_KEYQ  256
-#define WT_KBUF  15 /* BIOS type-ahead buffer */
+#define WT_KBUF  15   /* BIOS type-ahead buffer */
 #define WT_SPK   1024 /* speaker log entries */
 
 /* get_key() codes: ASCII, or scan code | 0x8000 for extended keys */
@@ -89,45 +89,45 @@ typedef struct {
     int kbuf_len;
 
     /* game state */
-    uint8_t wall[WT_COLS][WT_ROWS]; /* ds:1128 */
-    uint8_t floor[WT_FLOOR][WT_FLOOR]; /* ds:12b2 */
+    uint8_t wall[WT_COLS][WT_ROWS];     /* ds:1128 */
+    uint8_t floor[WT_FLOOR][WT_FLOOR];  /* ds:12b2 */
     uint8_t frozen[4], frozen_count[4]; /* ds:12aa */
-    int16_t slot[WT_SLOTS]; /* ds:1320: index into pool or -1 */
+    int16_t slot[WT_SLOTS];             /* ds:1320: index into pool or -1 */
     wt_piece pool[WT_POOL];
     uint8_t pool_used[WT_POOL];
-    wt_piece piece;  /* ds:12f2 */
-    wt_piece old;    /* ds:10fa: position drawn last pass */
-    uint32_t score;  /* ds:109a */
-    uint32_t lines;  /* ds:002c */
-    uint8_t level;   /* ds:1098 */
-    int16_t lines_to_level; /* ds:131e */
-    uint16_t fall_delay;    /* ds:0026 */
-    uint32_t fall_deadline; /* ds:1120 */
-    uint32_t drop_deadline; /* ds:1124 */
-    uint8_t game_over;      /* ds:000c */
-    uint8_t piece_active;   /* ds:0011 */
-    uint8_t dropping;       /* ds:0012 */
-    uint8_t need_next;      /* ds:0013 */
-    uint8_t preview_drawn;  /* ds:0014 */
-    uint8_t lock_lr;        /* ds:0015 */
-    uint8_t landed;         /* ds:0016 */
-    uint8_t stored;         /* ds:12a8: last piece stopped on a wall */
-    uint8_t drop_rows;      /* ds:111c */
-    uint8_t floor_bonus;    /* ds:111d */
-    uint8_t bonus_piece;    /* ds:10f8 */
-    uint8_t overflow;       /* ds:10a0 */
-    uint8_t aborted;        /* ds:1aa0 */
-    uint8_t restart;        /* ds:111a */
+    wt_piece piece;                   /* ds:12f2 */
+    wt_piece old;                     /* ds:10fa: position drawn last pass */
+    uint32_t score;                   /* ds:109a */
+    uint32_t lines;                   /* ds:002c */
+    uint8_t level;                    /* ds:1098 */
+    int16_t lines_to_level;           /* ds:131e */
+    uint16_t fall_delay;              /* ds:0026 */
+    uint32_t fall_deadline;           /* ds:1120 */
+    uint32_t drop_deadline;           /* ds:1124 */
+    uint8_t game_over;                /* ds:000c */
+    uint8_t piece_active;             /* ds:0011 */
+    uint8_t dropping;                 /* ds:0012 */
+    uint8_t need_next;                /* ds:0013 */
+    uint8_t preview_drawn;            /* ds:0014 */
+    uint8_t lock_lr;                  /* ds:0015 */
+    uint8_t landed;                   /* ds:0016 */
+    uint8_t stored;                   /* ds:12a8: last piece stopped on a wall */
+    uint8_t drop_rows;                /* ds:111c */
+    uint8_t floor_bonus;              /* ds:111d */
+    uint8_t bonus_piece;              /* ds:10f8 */
+    uint8_t overflow;                 /* ds:10a0 */
+    uint8_t aborted;                  /* ds:1aa0 */
+    uint8_t restart;                  /* ds:111a */
     uint8_t piece_index, piece_class; /* ds:1099, ds:10a1: next piece */
-    uint16_t next_piece;    /* ds:1114: preview index */
+    uint16_t next_piece;              /* ds:1114: preview index */
     uint8_t row_full[8], col_full[8]; /* ds:1abc, ds:1ac4 */
-    uint8_t anomaly;        /* original would have hit "Programmer Error" or a wild write */
-    uint8_t flipped;        /* this pass ended in a page flip */
+    uint8_t anomaly;                  /* original would have hit "Programmer Error" or a wild write */
+    uint8_t flipped;                  /* this pass ended in a page flip */
 
     /* presentation hints, set by the core for the frontend */
-    uint32_t effects;     /* WT_FX_* since last cleared by the frontend */
-    uint8_t fx_walls[4];  /* walls in the last freeze/thaw effect */
-    uint64_t fx_at;       /* clock at which the last blocking effect started */
+    uint32_t effects;    /* WT_FX_* since last cleared by the frontend */
+    uint8_t fx_walls[4]; /* walls in the last freeze/thaw effect */
+    uint64_t fx_at;      /* clock at which the last blocking effect started */
     /* PC speaker: every change (Hz, 0 = off) with the clock it happened at. The frontend
      * keeps its own read position; spk_n counts all entries ever written. */
     uint64_t spk_at[WT_SPK];
@@ -137,10 +137,10 @@ typedef struct {
 
 enum {
     WT_FX_MOVE_FAIL = 1u << 0,
-    WT_FX_LINES = 1u << 1,     /* floor lines cleared (row_full/col_full) */
-    WT_FX_FREEZE = 1u << 2,    /* walls frozen (fx_walls) */
-    WT_FX_THAW = 1u << 3,      /* walls thawed (fx_walls) */
-    WT_FX_SETTLE = 1u << 4,    /* stored pieces slid down */
+    WT_FX_LINES = 1u << 1,  /* floor lines cleared (row_full/col_full) */
+    WT_FX_FREEZE = 1u << 2, /* walls frozen (fx_walls) */
+    WT_FX_THAW = 1u << 3,   /* walls thawed (fx_walls) */
+    WT_FX_SETTLE = 1u << 4, /* stored pieces slid down */
     WT_FX_FLOOR_EMPTY = 1u << 5,
     WT_FX_LEVEL_BONUS = 1u << 6, /* lines_to_level reached: bonus piece */
     WT_FX_LEVEL_UP = 1u << 7,

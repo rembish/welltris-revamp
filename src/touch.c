@@ -26,7 +26,10 @@ static void add(box r, uint16_t key, int kind, float a, float b, const char *lab
     btn[nb++] = (tbtn){ r, key, kind, a, b, label, 0, 0 };
 }
 
-static box inset(box b, float k) { return (box){ b.x + b.w * k, b.y + b.h * k, b.w * (1 - 2 * k), b.h * (1 - 2 * k) }; }
+static box inset(box b, float k)
+{
+    return (box){ b.x + b.w * k, b.y + b.h * k, b.w * (1 - 2 * k), b.h * (1 - 2 * k) };
+}
 
 /* the arrow keys: the game turns them into moves along whichever wall the piece is on */
 static void dpad(box a)
@@ -71,8 +74,10 @@ void touch_layout(const view_layout_t *L, int screen)
         float row = L->portrait ? L->left.h * 0.14f : L->left.w * 0.2f;
         box top = L->portrait ? (box){ L->left.x, L->left.y, L->right.x + L->right.w - L->left.x, row }
                               : (box){ L->left.x, L->left.y - row * 1.3f, L->left.w * 2.5f, row };
-        if (L->portrait) small_row(top);
-        else small_row((box){ L->left.x, 8, L->left.w * 3.4f, row });
+        if (L->portrait)
+            small_row(top);
+        else
+            small_row((box){ L->left.x, 8, L->left.w * 3.4f, row });
         float off = L->portrait ? row * 1.3f : 0;
         dpad((box){ L->left.x, L->left.y + off, L->left.w, L->left.h - off });
         actions((box){ L->right.x, L->right.y + off, L->right.w, L->right.h - off });

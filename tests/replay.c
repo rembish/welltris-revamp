@@ -61,9 +61,9 @@ static void snapshot(const wt_game *g)
     hex(&g->floor[0][0], sizeof g->floor);
     putchar(' ');
     hex(fr, sizeof fr);
-    printf(" %" PRId32 " %" PRId32 " %d %d %d %" PRId32 " %" PRId32 " ", (int32_t)g->score,
-           (int32_t)g->lines, g->level, g->lines_to_level, (int16_t)g->fall_delay,
-           (int32_t)g->fall_deadline, (int32_t)g->drop_deadline);
+    printf(" %" PRId32 " %" PRId32 " %d %d %d %" PRId32 " %" PRId32 " ", (int32_t)g->score, (int32_t)g->lines,
+           g->level, g->lines_to_level, (int16_t)g->fall_delay, (int32_t)g->fall_deadline,
+           (int32_t)g->drop_deadline);
     hex(flags, sizeof flags);
     printf(" %d %d %d %" PRId32 " ", g->current_wall, g->drop_rows, (int16_t)g->next_piece, (int32_t)g->rng);
     for (i = 0; i < WT_SLOTS; i++) {
@@ -95,9 +95,16 @@ int main(int argc, char **argv)
     }
     f = fopen(argv[1], "r");
     if (!f) return 1;
-    if (fscanf(f, "%lu %lu %lu %lu %lu %llu %lu", &seed, &set, &level, &preview, &fixed, &clock, &nfill) != 7) return 1;
+    if (fscanf(f, "%lu %lu %lu %lu %lu %llu %lu", &seed, &set, &level, &preview, &fixed, &clock, &nfill) !=
+        7) {
+        fclose(f);
+        return 1;
+    }
     for (i = 0; i < nfill && i < 64; i++)
-        if (fscanf(f, "%u %u %u", &fx[i], &fy[i], &fc[i]) != 3) return 1;
+        if (fscanf(f, "%u %u %u", &fx[i], &fy[i], &fc[i]) != 3) {
+            fclose(f);
+            return 1;
+        }
     max_iter = strtoul(argv[2], NULL, 10);
     wt_session_init(&g, (uint32_t)seed, clock);
     memset(&o, 0, sizeof o);
@@ -123,7 +130,8 @@ int main(int argc, char **argv)
             if (g.effects & (1u << b)) fxc[b]++;
         g.effects = 0;
     }
-    printf("end anomaly=%d fail=%lu lines=%lu freeze=%lu thaw=%lu settle=%lu empty=%lu bonus=%lu levelup=%lu\n",
-           g.anomaly, fxc[0], fxc[1], fxc[2], fxc[3], fxc[4], fxc[5], fxc[6], fxc[7]);
+    printf(
+        "end anomaly=%d fail=%lu lines=%lu freeze=%lu thaw=%lu settle=%lu empty=%lu bonus=%lu levelup=%lu\n",
+        g.anomaly, fxc[0], fxc[1], fxc[2], fxc[3], fxc[4], fxc[5], fxc[6], fxc[7]);
     return 0;
 }

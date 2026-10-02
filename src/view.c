@@ -69,8 +69,9 @@ static void floor_cell_quad(const proj_t *P, int x, int y, float inset, float *q
 }
 
 /* the 16 EGA colours the pieces use, made a little richer */
-static const unsigned cell_hex[16] = { 0x000000, 0x3b6cf0, 0x22c55e, 0x14b8c8, 0xe5483b, 0xb44fd6, 0xe8892a, 0xc3cad6,
-                                       0x7d8899, 0x5aa9f5, 0x7ee787, 0x6ee7f0, 0xff7a6e, 0xf472b6, 0xfacc4d, 0xf4f6fb };
+static const unsigned cell_hex[16] = { 0x000000, 0x3b6cf0, 0x22c55e, 0x14b8c8, 0xe5483b, 0xb44fd6,
+                                       0xe8892a, 0xc3cad6, 0x7d8899, 0x5aa9f5, 0x7ee787, 0x6ee7f0,
+                                       0xff7a6e, 0xf472b6, 0xfacc4d, 0xf4f6fb };
 
 rgba view_cell_color(int c) { return rgb_hex(cell_hex[c & 15], 1); }
 
@@ -202,10 +203,11 @@ static void next_piece_draw(const wt_game *g, box b)
         if (pr[i] > maxr) maxr = pr[i];
     }
     float cw = fminf(b.w / 5.5f, b.h / 5.5f);
-    float ox = b.x + (b.w - (float)(maxc - minc + 1) * cw) / 2, oy = b.y + (b.h - (float)(maxr - minr + 1) * cw) / 2;
+    float ox = b.x + (b.w - (float)(maxc - minc + 1) * cw) / 2,
+          oy = b.y + (b.h - (float)(maxr - minr + 1) * cw) / 2;
     for (i = 0; i < n; i++) {
         float x = ox + (float)(pc[i] - minc) * cw, y = oy + (float)(maxr - pr[i]) * cw;
-        float q[8] = { x, y, x + cw, y, x + cw, y + cw, x, y + cw };
+        const float q[8] = { x, y, x + cw, y, x + cw, y + cw, x, y + cw };
         cell(q, view_cell_color(p.color), 1.f, 0);
     }
 }
@@ -227,7 +229,8 @@ static void panel(const wt_game *g, box b, const view_fx *fx)
         font_draw(vx, y + (float)i * s * 1.15f, s * 0.78f, rgb_hex(0xe9eef7, 1), ALIGN_RIGHT, v[i]);
     }
     if (fx && fx->hiscore > 0)
-        font_drawf(x, y + 4.6f * s, s * 0.55f, rgb_hex(0x7f8aa3, 1), ALIGN_LEFT, "HIGH  %ld", (long)fx->hiscore);
+        font_drawf(x, y + 4.6f * s, s * 0.55f, rgb_hex(0x7f8aa3, 1), ALIGN_LEFT, "HIGH  %ld",
+                   (long)fx->hiscore);
     box nb = { vx + s * 0.4f, b.y + s * 0.3f, b.x + b.w - vx - s * 0.7f, b.h - s * 0.6f };
     font_draw(nb.x + nb.w / 2, y, s * 0.6f, rgb_hex(0x35c3c8, 1), ALIGN_CENTER, "NEXT");
     if (g->preview_on && g->piece_active) {
@@ -246,8 +249,10 @@ static void dome(float x, float base, float w, float h, rgba c)
     for (int i = 0; i < 16; i++) {
         float a0 = (float)i / 16 * (float)M_PI, a1 = (float)(i + 1) / 16 * (float)M_PI;
         float r0 = sinf(a0) * (1.f + 0.35f * sinf(a0 * 2)), r1 = sinf(a1) * (1.f + 0.35f * sinf(a1 * 2));
-        float y0 = base - h * 0.45f - (1 - cosf(a0)) * h * 0.22f, y1 = base - h * 0.45f - (1 - cosf(a1)) * h * 0.22f;
-        float q[8] = { x - r0 * w * 0.5f, y0, x + r0 * w * 0.5f, y0, x + r1 * w * 0.5f, y1, x - r1 * w * 0.5f, y1 };
+        float y0 = base - h * 0.45f - (1 - cosf(a0)) * h * 0.22f,
+              y1 = base - h * 0.45f - (1 - cosf(a1)) * h * 0.22f;
+        const float q[8] = { x - r0 * w * 0.5f, y0, x + r0 * w * 0.5f, y0,
+                             x + r1 * w * 0.5f, y1, x - r1 * w * 0.5f, y1 };
         gfx_quad(q, c);
     }
     gfx_tri(x - w * 0.06f, base - h * 0.88f, x + w * 0.06f, base - h * 0.88f, x, base - h * 1.15f, c);
@@ -255,8 +260,11 @@ static void dome(float x, float base, float w, float h, rgba c)
 
 void view_scene(box b, int speed, float t)
 {
-    static const unsigned sky[5][2] = { { 0x2b5d9c, 0xf5b971 }, { 0x1f4f7a, 0x8fd3f4 }, { 0x3a2350, 0xf08a5d },
-                                        { 0x0f1d3a, 0x5b7fb8 }, { 0x08091a, 0x3b2d6b } };
+    static const unsigned sky[5][2] = { { 0x2b5d9c, 0xf5b971 },
+                                        { 0x1f4f7a, 0x8fd3f4 },
+                                        { 0x3a2350, 0xf08a5d },
+                                        { 0x0f1d3a, 0x5b7fb8 },
+                                        { 0x08091a, 0x3b2d6b } };
     rgba top = rgb_hex(sky[speed % 5][0], 1), bot = rgb_hex(sky[speed % 5][1], 1);
     float base = b.y + b.h * 0.82f;
     (void)t;
@@ -266,19 +274,21 @@ void view_scene(box b, int speed, float t)
     rgba roof = rgba_scale(rgb_hex(0x1f5f4a, 1), speed >= 3 ? 0.55f : 0.9f);
     /* Kremlin wall with merlons */
     gfx_rect(b.x, base - b.h * 0.06f, b.w, b.h * 0.06f, wall);
-    for (float x = b.x; x < b.x + b.w; x += b.w / 18)
-        gfx_rect(x, base - b.h * 0.08f, b.w / 40, b.h * 0.02f, wall);
+    for (int i = 0; i < 18; i++)
+        gfx_rect(b.x + b.w * (float)i / 18, base - b.h * 0.08f, b.w / 40, b.h * 0.02f, wall);
     /* a tower with a spire */
     float tx = b.x + b.w * 0.3f, tw = b.w * 0.16f;
     gfx_rect(tx - tw / 2, base - b.h * 0.42f, tw, b.h * 0.42f, wall);
-    gfx_tri(tx - tw * 0.55f, base - b.h * 0.42f, tx + tw * 0.55f, base - b.h * 0.42f, tx, base - b.h * 0.66f, roof);
+    gfx_tri(tx - tw * 0.55f, base - b.h * 0.42f, tx + tw * 0.55f, base - b.h * 0.42f, tx, base - b.h * 0.66f,
+            roof);
     gfx_tri(tx - b.w * 0.01f, base - b.h * 0.66f, tx + b.w * 0.01f, base - b.h * 0.66f, tx, base - b.h * 0.7f,
             rgb_hex(0xd94a3a, 1));
     /* a cathedral with onion domes */
     float cx = b.x + b.w * 0.72f;
     gfx_rect(cx - b.w * 0.17f, base - b.h * 0.22f, b.w * 0.34f, b.h * 0.22f, rgba_scale(wall, 0.9f));
     dome(cx, base - b.h * 0.22f, b.w * 0.14f, b.h * 0.26f, roof);
-    dome(cx - b.w * 0.12f, base - b.h * 0.22f, b.w * 0.08f, b.h * 0.15f, rgba_scale(rgb_hex(0xd9a441, 1), 0.9f));
+    dome(cx - b.w * 0.12f, base - b.h * 0.22f, b.w * 0.08f, b.h * 0.15f,
+         rgba_scale(rgb_hex(0xd9a441, 1), 0.9f));
     dome(cx + b.w * 0.12f, base - b.h * 0.22f, b.w * 0.08f, b.h * 0.15f, rgb_hex(0x3a6dd9, 1));
     gfx_flush();
 }
@@ -333,8 +343,8 @@ void view_game(const wt_game *g, const view_layout_t *L, const view_fx *fx)
         gfx_rect(L->scene.x, L->scene.y, L->scene.w, L->scene.h, rgb_hex(0x000000, 1));
         float aw = 264.f, ah = 480.f;
         float k = fminf(L->scene.w / aw, L->scene.h / ah);
-        art_draw(ART_SCENE1 + sp, L->scene.x + (L->scene.w - aw * k) / 2, L->scene.y + (L->scene.h - ah * k) / 2,
-                 aw * k, ah * k, 1);
+        art_draw(ART_SCENE1 + sp, L->scene.x + (L->scene.w - aw * k) / 2,
+                 L->scene.y + (L->scene.h - ah * k) / 2, aw * k, ah * k, 1);
     } else {
         view_scene(L->scene, sp, fx ? fx->time : 0);
     }
@@ -342,12 +352,12 @@ void view_game(const wt_game *g, const view_layout_t *L, const view_fx *fx)
     if (fx && fx->message) {
         box b = L->well;
         float s = b.w * 0.07f;
-        gfx_round_rect(b.x + b.w * 0.12f, b.y + b.h * 0.38f, b.w * 0.76f, b.h * (fx->submessage ? 0.26f : 0.2f),
-                       s * 0.3f, rgb_hex(0x0b0e16, 0.88f));
+        gfx_round_rect(b.x + b.w * 0.12f, b.y + b.h * 0.38f, b.w * 0.76f,
+                       b.h * (fx->submessage ? 0.26f : 0.2f), s * 0.3f, rgb_hex(0x0b0e16, 0.88f));
         font_draw(b.x + b.w / 2, b.y + b.h * 0.42f, s, rgb_hex(0xffd166, 1), ALIGN_CENTER, fx->message);
         if (fx->submessage)
-            font_draw(b.x + b.w / 2, b.y + b.h * 0.42f + s * 1.4f, s * 0.45f, rgb_hex(0xc9d6f5, 1), ALIGN_CENTER,
-                      fx->submessage);
+            font_draw(b.x + b.w / 2, b.y + b.h * 0.42f + s * 1.4f, s * 0.45f, rgb_hex(0xc9d6f5, 1),
+                      ALIGN_CENTER, fx->submessage);
     }
     gfx_flush();
 }
