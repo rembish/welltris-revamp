@@ -1054,7 +1054,6 @@ static int record_mode(int argc, char **argv)
     start_game();
     double end = -1;
     for (long fr = 0; fr < 20L * 60 * (long)fps; fr++) {
-        char fn[1024];
         A.now = 1.0 + (double)fr / fps;
         for (; ki < nk && at[ki] <= clock_now() + WT_PIT_HZ && A.g.q_len < WT_KEYQ; ki++)
             wt_push_key(&A.g, at[ki], key[ki]);
@@ -1068,6 +1067,7 @@ static int record_mode(int argc, char **argv)
             for (int y = 0; y < A.h; y++)
                 fwrite((char *)sf->pixels + (size_t)y * (size_t)sf->pitch, 4, (size_t)A.w, stdout);
         } else {
+            char fn[1024];
             snprintf(fn, sizeof fn, "%s/f%06ld.bmp", dir, fr);
             SDL_SaveBMP(sf, fn);
         }
