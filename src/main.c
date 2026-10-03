@@ -1006,6 +1006,78 @@ static void frame(void)
 #endif
 }
 
+/* --record dir --script file [--fps N] [--tail secs]: play a replay script (as written by
+   tests/botgen) headless on the game clock and save every frame as dir/fNNNNNN.bmp, or with
+   --record - write raw BGRA frames to stdout (for ffmpeg -f rawvideo -pix_fmt bgra) */
+static int record_mode(int argc, char **argv)
+{
+    const char *dir = NULL, *script = NULL;
+    double fps = 30, tail = 3;
+    static uint64_t at[1 << 15];
+    static uint16_t key[1 << 15];
+    int nk = 0, ki = 0;
+    unsigned long seed, set, level, preview, fixed, nfill;
+    unsigned long long c0, kc;
+    unsigned kv;
+    for (int i = 1; i + 1 < argc; i++) {
+        if (!strcmp(argv[i], "--record"))
+            dir = argv[++i];
+        else if (!strcmp(argv[i], "--script"))
+            script = argv[++i];
+        else if (!strcmp(argv[i], "--fps"))
+            fps = atof(argv[++i]);
+        else if (!strcmp(argv[i], "--tail"))
+            tail = atof(argv[++i]);
+    }
+    if (!dir || !script) return 0;
+    FILE *f = fopen(script, "r");
+    if (!f) return 1;
+    if (fscanf(f, "%lu %lu %lu %lu %lu %llu %lu", &seed, &set, &level, &preview, &fixed, &c0, &nfill) != 7 ||
+        nfill) {
+        fprintf(stderr, "unsupported script\n");
+        fclose(f);
+        return 1;
+    }
+    while (nk < (int)(sizeof at / sizeof at[0]) && fscanf(f, "%llu %x", &kc, &kv) == 2) {
+        at[nk] = kc;
+        key[nk++] = (uint16_t)kv;
+    }
+    fclose(f);
+    A.opt[OPT_SET] = (uint8_t)set;
+    A.opt[OPT_SPEED] = (uint8_t)level;
+    A.opt[OPT_PREVIEW_OFF] = !preview;
+    A.opt[OPT_MOVE2] = fixed != 0;
+    A.now = 1.0;
+    A.t0 = 1.0;
+    A.c0 = c0;
+    wt_session_init(&A.g, (uint32_t)seed, c0);
+    start_game();
+    double end = -1;
+    for (long fr = 0; fr < 20L * 60 * (long)fps; fr++) {
+        char fn[1024];
+        A.now = 1.0 + (double)fr / fps;
+        for (; ki < nk && at[ki] <= clock_now() + WT_PIT_HZ && A.g.q_len < WT_KEYQ; ki++)
+            wt_push_key(&A.g, at[ki], key[ki]);
+        if (A.ovl != O_OVER) advance_game(); /* stays on the game over screen at the end */
+        if (A.ovl == O_OVER && end < 0) end = A.now;
+        if (end >= 0 && A.now - end > tail) break;
+        render();
+        SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, A.w, A.h, 32, SDL_PIXELFORMAT_ARGB8888);
+        SDL_RenderReadPixels(A.ren, NULL, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch);
+        if (!strcmp(dir, "-")) {
+            for (int y = 0; y < A.h; y++)
+                fwrite((char *)sf->pixels + (size_t)y * (size_t)sf->pitch, 4, (size_t)A.w, stdout);
+        } else {
+            snprintf(fn, sizeof fn, "%s/f%06ld.bmp", dir, fr);
+            SDL_SaveBMP(sf, fn);
+        }
+        SDL_FreeSurface(sf);
+    }
+    fprintf(stderr, "score=%lu lines=%lu level=%d\n", (unsigned long)A.g.score, (unsigned long)A.g.lines,
+            A.g.level);
+    return 1;
+}
+
 /* --shot out.bmp [--screen title|setup|game|hof|credits] [--seed S] [--secs N] [--keys t:key,...]
    [--opts set,speed]: render headless, save a screenshot and exit */
 static int shot_mode(int argc, char **argv)
@@ -1110,7 +1182,7 @@ int main(int argc, char **argv)
 #endif
     for (int i = 1; i < argc; i++)
         if (!strcmp(argv[i], "--touch")) set_touch(1);
-    if (shot_mode(argc, argv)) return 0;
+    if (record_mode(argc, argv) || shot_mode(argc, argv)) return 0;
     A.now = seconds();
     A.t0 = A.now;
     A.title_since = A.now;

@@ -7,6 +7,14 @@ reverse-engineered port of the DOS version (Spectrum HoloByte, 1989) to portable
 runs natively on Linux, Windows and macOS, and in a browser via WebAssembly. No original game
 files are included or needed to play.
 
+**Play in the browser:** <https://rembish.github.io/welltris-revamp/> (phones and tablets get
+on-screen controls).
+
+![A search bot playing the homage version until all four walls freeze](docs/demo.gif)
+
+*The test bot (`tests/botgen.c`) playing at speed 1 with the homage pictures: 30 lines and two
+level-ups, until all four walls freeze. [Full-quality video](docs/demo.mp4).*
+
 The goal has two halves:
 
 1. **Game logic: decompiled faithfully.** Piece sets, the Turbo C random number generator and
@@ -148,6 +156,14 @@ emulator-tested.
 | DOSBox-X + Xvfb | Running the original as a reference, headless screenshots | `apt install dosbox-x xvfb` |
 | gcc + SDL2 + CMake | Native build | `apt install libsdl2-dev cmake` |
 | Emscripten (emsdk) | WebAssembly build | `git clone emsdk` into `~/tools/emsdk` |
+
+### Demo clip
+
+```sh
+./build/wt_botgen 66 2 0 1 0 1000 400 0 66 0 > demo.txt      # the bot's game as a key script
+SDL_VIDEODRIVER=dummy ./build/welltris --size 960x600 --record - --script demo.txt |
+  ffmpeg -f rawvideo -pix_fmt bgra -s 960x600 -r 30 -i - -c:v libx264 -crf 27 -pix_fmt yuv420p docs/demo.mp4
+```
 
 ## Code quality
 
