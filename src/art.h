@@ -1,5 +1,9 @@
-/* Optional artwork decoded from the player's own copy of the game (re/tools/assets.py) and
- * embedded only in local builds (-DWT_LOCAL_ASSETS=ON). Everything must work without it. */
+/* The pictures, embedded at build time. Two sets:
+ * - the homage set in assets/art (Prague instead of Moscow), the default;
+ * - the original artwork, upscaled from your own copy of the game by re/tools/assets.py into the
+ *   git-ignored assets-local/ and used with -DWT_LOCAL_ASSETS=ON (private builds only).
+ * The original set also has its dialog/credits frames and lays out its screens itself; the
+ * homage pictures leave boards for the frontend to fill. */
 #ifndef ART_H
 #define ART_H
 
@@ -15,23 +19,22 @@ enum {
     ART_SCENE5,
     ART_WELL1,
     ART_WELL2,
-    ART_HISCORE1,
-    ART_HISCORE2,
+    ART_HISCORE1, /* homage: the whole hall of fame picture */
+    ART_HISCORE2, /* original only: its right half */
     ART_DIALOG,
     ART_CREDITS,
     ART_COUNT
 };
 
-/* original screen coordinates are 640x350; the art is that, shown at 4:3 */
-#define ART_SRC_W 640.f
-#define ART_SRC_H 350.f
-
 void art_init(SDL_Renderer *r);
 int art_have(int id);
-int art_any(void);
+/* every picture the frontend needs is there */
+int art_complete(void);
+/* this build has the original artwork (with its 640x350 screen layouts) */
+int art_original(void);
+/* size of image id in its own pixels */
+void art_size(int id, float *w, float *h);
 /* draws image id into the rectangle, stretched */
 void art_draw(int id, float x, float y, float w, float h, float alpha);
-/* source size in original pixels (e.g. 264x350 for a scene) */
-void art_src_size(int id, float *w, float *h);
 
 #endif

@@ -1,4 +1,5 @@
-# Write art_data.c: the embedded local assets (or empty slots). -DDIR=assets dir (may be empty)
+# Write art_data.c: the pictures in DIR embedded as image files, empty slots for missing ones.
+# The homage set calls the hall of fame picture "highscore"; it fills the hiscore1 slot.
 set(NAMES title setup scene1 scene2 scene3 scene4 scene5 well1 well2 hiscore1 hiscore2 dialog credits)
 set(OUTC "#include <stddef.h>\n")
 set(PTRS "")
@@ -10,6 +11,8 @@ foreach(N ${NAMES})
       set(F ${DIR}/${N}.jpg)
     elseif(EXISTS ${DIR}/${N}.png)
       set(F ${DIR}/${N}.png)
+    elseif(N STREQUAL "hiscore1" AND EXISTS ${DIR}/highscore.jpg)
+      set(F ${DIR}/highscore.jpg)
     endif()
   endif()
   if(F)

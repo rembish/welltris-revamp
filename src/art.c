@@ -3,15 +3,13 @@
 
 #include "../third_party/stb_image.h"
 
-/* from the generated art_data.c (empty unless WT_LOCAL_ASSETS) */
+/* from the generated art_data.c */
 extern const unsigned char *const art_blob[ART_COUNT];
 extern const int art_blob_len[ART_COUNT];
 
-static const float src_w[ART_COUNT] = { 640, 640, 264, 264, 264, 264, 264, 376, 376, 320, 320, 216, 368 };
-static const float src_h[ART_COUNT] = { 350, 350, 350, 350, 350, 350, 350, 64, 286, 350, 350, 83, 250 };
-
 static SDL_Renderer *ren;
 static SDL_Texture *tex[ART_COUNT];
+static int tex_w[ART_COUNT], tex_h[ART_COUNT];
 
 void art_init(SDL_Renderer *r)
 {
@@ -24,6 +22,8 @@ void art_init(SDL_Renderer *r)
         if (!px) continue;
         tex[i] = SDL_CreateTexture(r, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, w, h);
         if (tex[i]) {
+            tex_w[i] = w;
+            tex_h[i] = h;
             SDL_UpdateTexture(tex[i], NULL, px, w * 4);
             SDL_SetTextureBlendMode(tex[i], SDL_BLENDMODE_BLEND);
         }
@@ -33,12 +33,14 @@ void art_init(SDL_Renderer *r)
 
 int art_have(int id) { return id >= 0 && id < ART_COUNT && tex[id] != NULL; }
 
-int art_any(void)
+int art_complete(void)
 {
-    for (int i = 0; i < ART_COUNT; i++)
-        if (tex[i]) return 1;
-    return 0;
+    for (int i = ART_TITLE; i <= ART_SCENE5; i++)
+        if (!tex[i]) return 0;
+    return tex[ART_HISCORE1] != NULL;
 }
+
+int art_original(void) { return tex[ART_HISCORE2] && tex[ART_DIALOG] && tex[ART_CREDITS]; }
 
 void art_draw(int id, float x, float y, float w, float h, float alpha)
 {
@@ -49,8 +51,8 @@ void art_draw(int id, float x, float y, float w, float h, float alpha)
     SDL_RenderCopyF(ren, tex[id], NULL, &d);
 }
 
-void art_src_size(int id, float *w, float *h)
+void art_size(int id, float *w, float *h)
 {
-    *w = src_w[id];
-    *h = src_h[id];
+    *w = (float)(id >= 0 && id < ART_COUNT ? tex_w[id] : 0);
+    *h = (float)(id >= 0 && id < ART_COUNT ? tex_h[id] : 0);
 }

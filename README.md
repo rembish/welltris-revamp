@@ -15,9 +15,10 @@ The goal has two halves:
    line clears, scoring, level ups and the timing of every blocking effect. This is a
    deterministic, platform-independent C core that is checked pass by pass against the
    original machine code (see [How faithful is it?](#how-faithful-is-it)).
-2. **Presentation: modernized.** The well, panel and menus are drawn fresh at any resolution.
-   The original artwork (title, set-up screen, the five Moscow scenes, the hall of fame) can be
-   upscaled from *your own copy* into a private build; public builds draw everything in code.
+2. **Presentation: modernized.** The well and the panel are drawn fresh at any resolution. The
+   pictures are a homage: the original's Moscow became Prague (the title over the Vltava, a
+   hockey arena for the set-up screen, five Prague scenes for the five speeds, a pub for the hall
+   of fame). The original artwork can be upscaled from *your own copy* into a private build.
 
 ## Layout
 
@@ -26,6 +27,7 @@ The goal has two halves:
 | `core/`     | Game logic reconstructed from `WELLTRIS.EXE`: plain C99, no I/O, deterministic |
 | `src/`      | SDL2 frontend: rendering, input, PC-speaker sound, menus, hall of fame, touch controls |
 | `tests/`    | Replay tool and a search bot used by the differential test |
+| `assets/`   | Font and the homage pictures (`assets/art`, see [`docs/art-brief.md`](docs/art-brief.md)) |
 | `web/`      | HTML shell for the browser build |
 | `re/`       | Reverse-engineering notes, Ghidra scripts, table generator, emulator harness, asset tool |
 
@@ -100,8 +102,9 @@ cmake -S . -B build-local -DWT_LOCAL_ASSETS=ON && cmake --build build-local -j
 
 `assets.py` decodes the pictures and upscales them 3× to 4:3 into the git-ignored
 `assets-local/`: line art (frames, panels) is traced into vectors and re-rendered, dithered
-pictures (title, scenes, set-up, hall of fame) are de-dithered and sharpened. The artwork is
-Spectrum HoloByte's: never commit it or publish a build that contains it.
+pictures (title, scenes, set-up, hall of fame) are de-dithered and sharpened. Such a build uses
+the original screens and layouts instead of the homage set. The artwork is Spectrum
+HoloByte's: never commit it or publish a build that contains it.
 
 ## How faithful is it?
 
@@ -159,4 +162,5 @@ Welltris © 1989 Doka; American version © 1989 Sphere, Inc. / Spectrum HoloByte
 design Alexey Pajitnov and Andrei Snegov; American version by Dan Kaufman, Kevin Seghetti,
 Kus Pranawahadi, Greg Marr, Dan Guerra, Jody Sather and Matt Carlstrom. This is an
 unofficial fan reimplementation for preservation; no original game files are distributed.
-Font: Exo 2 (SIL OFL). Text and image decoding: stb_truetype, stb_image (public domain).
+Homage pictures made for this port. Font: Exo 2 (SIL OFL). Text and image decoding:
+stb_truetype, stb_image (public domain).

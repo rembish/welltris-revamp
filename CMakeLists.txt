@@ -20,16 +20,20 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -DIN=${FONT_SRC} -DOUT=${FONT_C} -DNAME=font_ttf -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed.cmake
   DEPENDS ${FONT_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed.cmake)
 
-# The original artwork is never part of the repository. re/tools/assets.py builds an upscaled set
-# from your own copy into assets-local/; WT_LOCAL_ASSETS embeds it into a private build.
-option(WT_LOCAL_ASSETS "Embed the art built by re/tools/assets.py from your own original files" OFF)
+# Pictures: the homage set in assets/art by default. The original artwork is never part of the
+# repository: re/tools/assets.py builds an upscaled set from your own copy into assets-local/hd,
+# and WT_LOCAL_ASSETS embeds that one instead (private builds only, never publish them).
+option(WT_LOCAL_ASSETS "Embed the original art built by re/tools/assets.py from your own copy" OFF)
 set(ART_C ${CMAKE_CURRENT_BINARY_DIR}/art_data.c)
-set(ART_DIR "")
-set(ART_DEPS "")
 if(WT_LOCAL_ASSETS)
   set(ART_DIR ${CMAKE_CURRENT_SOURCE_DIR}/assets-local/hd)
-  file(GLOB ART_DEPS ${ART_DIR}/*)
+  if(NOT EXISTS ${ART_DIR}/title.jpg)
+    message(FATAL_ERROR "WT_LOCAL_ASSETS: no ${ART_DIR}; run re/tools/assets.py build first")
+  endif()
+else()
+  set(ART_DIR ${CMAKE_CURRENT_SOURCE_DIR}/assets/art)
 endif()
+file(GLOB ART_DEPS ${ART_DIR}/*)
 add_custom_command(
   OUTPUT ${ART_C}
   COMMAND ${CMAKE_COMMAND} -DDIR=${ART_DIR} -DOUT=${ART_C} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/art_index.cmake

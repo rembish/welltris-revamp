@@ -31,8 +31,6 @@ void view_layout(int w, int h, view_layout_t *L);
 void view_background(int w, int h);
 void view_game(const wt_game *g, const view_layout_t *L, const view_fx *fx);
 void view_well(const wt_game *g, box b, const view_fx *fx, int show_piece);
-/* the procedural stand-in for a scene picture, speed 0..4 */
-void view_scene(box b, int speed, float t);
 rgba view_cell_color(int c);
 
 #endif

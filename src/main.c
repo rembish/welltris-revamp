@@ -608,9 +608,56 @@ static box hit_item[9], hit_val[5][5], hit_start;
 
 static int inside(box b, float x, float y) { return x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; }
 
-static void draw_setup_art(float t)
+/* ---- an image fitted into the window ---- */
+
+typedef struct {
+    float x, y, k; /* screen = (x + px * k, y + py * k) for image pixels */
+} fitted;
+
+static fitted fit_image(int id)
+{
+    float iw, ih, W = (float)A.w, H = (float)A.h;
+    fitted f;
+    art_size(id, &iw, &ih);
+    if (iw <= 0 || ih <= 0) iw = ih = 1;
+    f.k = fminf(W / iw, H / ih);
+    f.x = (W - iw * f.k) / 2;
+    f.y = (H - ih * f.k) / 2;
+    return f;
+}
+
+static box fmap(const fitted *f, float x, float y, float w, float h)
+{
+    return (box){ f->x + x * f->k, f->y + y * f->k, w * f->k, h * f->k };
+}
+
+static void draw_fitted(int id, float alpha)
+{
+    float iw, ih;
+    fitted f = fit_image(id);
+    art_size(id, &iw, &ih);
+    gfx_rect(0, 0, (float)A.w, (float)A.h, rgb_hex(0x000000, 1));
+    art_draw(id, f.x, f.y, iw * f.k, ih * f.k, alpha);
+}
+
+/* a dark board with a teal frame, like the homage set-up screen's */
+static void board(box b, float s)
+{
+    gfx_rect(b.x - s * 0.5f, b.y - s * 0.5f, b.w + s, b.h + s, rgb_hex(0x1fb5bf, 1));
+    gfx_rect(b.x - s * 0.3f, b.y - s * 0.3f, b.w + s * 0.6f, b.h + s * 0.6f, rgb_hex(0x0b5e66, 1));
+    gfx_rect(b.x, b.y, b.w, b.h, rgb_hex(0x121417, 0.97f));
+}
+
+/* ---- set-up screen ---- */
+
+static const char *const opt_names[5][5] = {
+    { "1", "2", "3" }, { "ON", "OFF" }, { "1", "2" }, { "ON", "OFF" }, { "1.0", "2.0", "3.0", "4.0", "5.0" }
+};
+
+static void draw_setup_original(float t)
 {
     screen43 s = fit43();
+    gfx_rect(0, 0, (float)A.w, (float)A.h, rgb_hex(0x000000, 1));
     art_draw(ART_SETUP, s.x, s.y, 640 * s.k, 480 * s.k, 1);
     for (int i = 0; i < 5; i++) {
         int v = A.opt[i];
@@ -628,7 +675,8 @@ static void draw_setup_art(float t)
     glow_box(map43(&s, b[0], b[1], b[2], b[3]), rgb_hex(0xffd166, 1), t, 1);
 }
 
-static void draw_setup_modern(float t)
+/* the homage picture leaves a board (100,98)-(868,488) and a START GAME sign at (952,257) */
+static void draw_setup_homage(float t)
 {
     static const char *labels[9] = { "LEVEL",      "SOUND",    "MOVE MODE", "NEXT PIECE",
                                      "SPEED",      "HI SCORE", "INFO",      "SAVE OPTIONS",
@@ -638,104 +686,109 @@ static void draw_setup_modern(float t)
                                      "QUIT"
 #endif
     };
-    static const char *vals[5][5] = { { "1", "2", "3" },
-                                      { "ON", "OFF" },
-                                      { "1", "2" },
-                                      { "ON", "OFF" },
-                                      { "1.0", "2.0", "3.0", "4.0", "5.0" } };
-    float W = (float)A.w, H = (float)A.h, s = fminf(W / 30.f, H / 22.f);
-    box p = { (W - s * 26) / 2, (H - s * 17.5f) / 2, s * 26, s * 17.5f };
-    view_scene((box){ 0, 0, W, H }, A.opt[OPT_SPEED], t);
-    gfx_rect(0, 0, W, H, rgb_hex(0x05070d, 0.55f));
-    gfx_round_rect(p.x, p.y, p.w, p.h, s * 0.5f, rgb_hex(0x0c1220, 0.94f));
-    gfx_rect_outline(p.x, p.y, p.w, p.h, 2, rgb_hex(0x2ab7c0, 1));
-    font_draw(p.x + p.w / 2, p.y + s * 0.6f, s * 1.3f, rgb_hex(0xffd166, 1), ALIGN_CENTER, "SET UP GAME");
-    font_draw(p.x + p.w / 2, p.y + s * 2.2f, s * 0.55f, rgb_hex(0x7f8aa3, 1), ALIGN_CENTER,
-              "UP/DOWN, TAB: select field     LEFT/RIGHT: select value     SPACE: start game");
+    fitted f = fit_image(ART_SETUP);
+    box p = fmap(&f, 100, 98, 768, 390);
+    float s = p.h / 15.f;
+    rgba label = rgb_hex(0xf2d55c, 1), dim = rgb_hex(0x6d6a52, 1), lit = rgb_hex(0x6ff7ff, 1);
+    draw_fitted(ART_SETUP, 1);
+    hit_start = fmap(&f, 952, 257, 296, 111);
+    font_draw(p.x + p.w / 2, p.y + s * 0.5f, s * 1.25f, rgb_hex(0xffffff, 1), ALIGN_CENTER, "SET UP GAME");
+    font_draw(p.x + p.w / 2, p.y + s * 2.0f, s * 0.55f, rgb_hex(0x8fd3d8, 1), ALIGN_CENTER,
+              "UP/DOWN, TAB: select field      LEFT/RIGHT: select value");
+    gfx_rect(p.x + s * 0.6f, p.y + s * 2.95f, p.w - s * 1.2f, s * 0.08f, rgb_hex(0x1fb5bf, 0.6f));
     for (int i = 0; i < 9; i++) {
         int col = i < 5 ? 0 : 1, row = i < 5 ? i : i - 5;
-        float x = p.x + s * (col ? 17.5f : 1.2f), y = p.y + s * (3.6f + (float)row * 2.4f);
-        box hb = { x - s * 0.4f, y - s * 0.3f, col ? s * 7.6f : s * 15.6f, s * 1.6f };
+        float x = p.x + (col ? p.w * 0.70f : s * 1.0f), y = p.y + s * (3.7f + (float)row * 2.15f);
+        box hb = { x - s * 0.4f, y - s * 0.3f, col ? p.w * 0.29f - s * 0.2f : p.w * 0.66f, s * 1.6f };
         hit_item[i] = hb;
         if (i == A.cursor) glow_box(hb, rgb_hex(0xffd166, 1), t, 1);
-        font_draw(x, y, s * 0.9f, rgb_hex(0xe9eef7, 1), ALIGN_LEFT, labels[i]);
-        if (i < 5)
-            for (int v = 0; v < opt_count[i]; v++) {
-                float vx = x + s * (6.2f + (float)v * (i == 4 ? 1.9f : 2.3f));
-                int on = A.opt[i] == v;
-                hit_val[i][v] =
-                    (box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f };
-                if (on)
-                    glow_box((box){ vx - s * 0.25f, y - s * 0.15f, s * (i == 4 ? 1.75f : 2.0f), s * 1.25f },
-                             rgb_hex(0x6ff7ff, 1), t, 0);
-                font_draw(vx + s * (i == 4 ? 0.62f : 0.75f), y, s * 0.9f,
-                          on ? rgb_hex(0x6ff7ff, 1) : rgb_hex(0x5d6680, 1), ALIGN_CENTER, vals[i][v]);
-            }
+        font_draw(x, y, s * 0.95f, label, ALIGN_LEFT, labels[i]);
+        if (i >= 5) continue;
+        for (int v = 0; v < opt_count[i]; v++) {
+            float step = i == 4 ? s * 2.45f : s * 2.9f, vx = x + s * 7.2f + (float)v * step;
+            box vb = { vx - s * 0.3f, y - s * 0.22f, step - s * 0.35f, s * 1.4f };
+            int on = A.opt[i] == v;
+            hit_val[i][v] = vb;
+            if (on) glow_box(vb, lit, t, 0);
+            font_draw(vb.x + vb.w / 2, y, s * 0.95f, on ? lit : dim, ALIGN_CENTER, opt_names[i][v]);
+        }
     }
-    box sb = { p.x + s * 17.1f, p.y + p.h - s * 3.2f, s * 7.8f, s * 2.2f };
-    hit_start = sb;
-    gfx_round_rect(sb.x, sb.y, sb.w, sb.h, s * 0.3f, rgb_hex(0x7a1f1f, 1));
-    font_draw(sb.x + sb.w / 2, sb.y + s * 0.25f, s * 0.9f, rgb_hex(0xffffff, 1), ALIGN_CENTER, "START GAME");
-    font_draw(sb.x + sb.w / 2, sb.y + s * 1.25f, s * 0.55f, rgb_hex(0xffd2c4, 1), ALIGN_CENTER,
-              "(SPACE BAR)");
 }
 
-static void draw_title(float t)
+static void draw_setup(float t)
 {
-    float W = (float)A.w, H = (float)A.h;
-    if (art_have(ART_TITLE)) {
+    if (art_original())
+        draw_setup_original(t);
+    else
+        draw_setup_homage(t);
+}
+
+/* ---- title, credits, hall of fame, dialogs ---- */
+
+static void draw_title(void)
+{
+    if (art_original()) {
         screen43 s = fit43();
+        gfx_rect(0, 0, (float)A.w, (float)A.h, rgb_hex(0x000000, 1));
         art_draw(ART_TITLE, s.x, s.y, 640 * s.k, 480 * s.k, 1);
     } else {
-        float s = fminf(W, H * 1.4f);
-        view_scene((box){ 0, 0, W, H }, 0, t);
-        font_draw(W / 2, H * 0.12f, s * 0.04f, rgb_hex(0x1a1414, 0.85f), ALIGN_CENTER,
-                  "Spectrum HoloByte presents...");
-        font_draw(W / 2 + s * 0.006f, H * 0.2f + s * 0.006f, s * 0.15f, rgb_hex(0x2a0a0a, 0.8f), ALIGN_CENTER,
-                  "WELLTRIS");
-        font_draw(W / 2, H * 0.2f, s * 0.15f, rgb_hex(0xb3261e, 1), ALIGN_CENTER, "WELLTRIS");
+        draw_fitted(ART_TITLE, 1);
     }
-    if (!art_have(ART_TITLE))
-        font_draw(W / 2, H * 0.93f, fminf(W, H) * 0.03f, rgb_hex(0xffffff, 0.55f + 0.4f * sinf(t * 3)),
-                  ALIGN_CENTER, A.touch ? "tap to continue" : "press any key");
 }
 
-static void draw_credits(float t)
+static void draw_credits(void)
 {
     float W = (float)A.w, H = (float)A.h;
+    int n = (int)(sizeof credits_text / sizeof credits_text[0]);
     box b;
-    if (art_have(ART_CREDITS)) {
+    if (art_original()) {
         screen43 s = fit43();
         b = map43(&s, 136, 50, 368, 250);
         gfx_rect(0, 0, W, H, rgb_hex(0x000000, 1));
         art_draw(ART_CREDITS, b.x, b.y, b.w, b.h, 1);
     } else {
-        float s = fminf(W, H) * 0.9f;
-        b = (box){ (W - s) / 2, (H - s * 0.7f) / 2, s, s * 0.7f };
-        view_scene((box){ 0, 0, W, H }, 2, t);
-        gfx_round_rect(b.x, b.y, b.w, b.h, s * 0.02f, rgb_hex(0x8a1212, 0.95f));
-        gfx_rect_outline(b.x, b.y, b.w, b.h, 3, rgb_hex(0xd9a441, 1));
+        fitted f = fit_image(ART_TITLE);
+        float iw, ih;
+        art_size(ART_TITLE, &iw, &ih);
+        draw_fitted(ART_TITLE, 0.35f);
+        b = fmap(&f, iw * 0.25f, ih * 0.06f, iw * 0.5f, ih * 0.88f);
+        board(b, b.h * 0.012f);
     }
-    int n = (int)(sizeof credits_text / sizeof credits_text[0]);
     float fs = b.h / ((float)n + 4.5f);
     font_draw(b.x + b.w / 2, b.y + fs * 0.9f, fs * 1.2f, rgb_hex(0xffd166, 1), ALIGN_CENTER, "WELLTRIS");
     for (int i = 0; i < n; i++)
         font_draw(b.x + b.w * 0.09f, b.y + fs * (2.8f + (float)i), fs * 0.8f, rgb_hex(0xf2f2f2, 1),
                   ALIGN_LEFT, credits_text[i]);
-    font_draw(W / 2, b.y + b.h + fs * 0.5f, fs * 0.8f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER,
-              "< press any key >");
+    font_draw(W / 2, fminf(b.y + b.h + fs * 0.5f, H - fs * 1.2f), fs * 0.8f, rgb_hex(0xffffff, 0.6f),
+              ALIGN_CENTER, "< press any key >");
+}
+
+static void dialog(const char *line1, const char *line2, const char *line3)
+{
+    float W = (float)A.w, H = (float)A.h, s = fminf(W, H) * 0.04f;
+    box d = { W / 2 - s * 8, H / 2 - s * 2.6f, s * 16, s * 5.2f };
+    rgba c = rgb_hex(0x10131a, 1), c3 = rgb_hex(0x8a1212, 1);
+    if (art_original()) {
+        art_draw(ART_DIALOG, d.x, d.y, d.w, d.h, 1);
+    } else {
+        board(d, s * 0.3f);
+        c = rgb_hex(0xf2d55c, 1);
+        c3 = rgb_hex(0x6ff7ff, 1);
+    }
+    font_draw(W / 2, d.y + s * 0.9f, s * 0.85f, c, ALIGN_CENTER, line1);
+    if (line2) font_draw(W / 2, d.y + s * 2.1f, s * 0.85f, c, ALIGN_CENTER, line2);
+    if (line3) font_draw(W / 2, d.y + s * 3.4f, s * 0.7f, c3, ALIGN_CENTER, line3);
 }
 
 static void draw_hof(float t)
 {
-    float W = (float)A.w, H = (float)A.h;
-    int art = art_have(ART_HISCORE1) && art_have(ART_HISCORE2);
+    float W = (float)A.w, H = (float)A.h, fs, rowh;
     box names, lines, last;
-    float fs;
-    if (art) {
+    int orig = art_original();
+    if (orig) {
         screen43 s = fit43();
-        gfx_rect(0, 0, W, H, rgb_hex(0x000000, 1));
         box l = map43(&s, 0, 0, 320, 350), r = map43(&s, 320, 0, 320, 350);
+        gfx_rect(0, 0, W, H, rgb_hex(0x000000, 1));
         art_draw(ART_HISCORE1, l.x, l.y, l.w, l.h, 1);
         art_draw(ART_HISCORE2, r.x, r.y, r.w, r.h, 1);
         names = map43(&s, 98, 13, 202, 112);
@@ -743,64 +796,55 @@ static void draw_hof(float t)
         last = map43(&s, 76, 140, 224, 20);
         fs = names.h / 10.f * 0.85f;
     } else {
-        float s = fminf(W / 18.f, H / 16.f);
-        view_scene((box){ 0, 0, W, H }, 4, t);
-        gfx_rect(0, 0, W, H, rgb_hex(0x05070d, 0.5f));
-        box p = { (W - s * 15) / 2, (H - s * 14) / 2, s * 15, s * 14 };
-        gfx_round_rect(p.x, p.y, p.w, p.h, s * 0.4f, rgb_hex(0x0c1220, 0.94f));
-        gfx_rect_outline(p.x, p.y, p.w, p.h, 2, rgb_hex(0xd9a441, 1));
-        font_draw(p.x + s * 1.6f, p.y + s * 0.5f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_LEFT, "NAME");
-        font_draw(p.x + s * 10.2f, p.y + s * 0.5f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_RIGHT, "SCORE");
-        font_draw(p.x + p.w - s * 0.6f, p.y + s * 0.5f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_RIGHT, "LINES");
-        names = (box){ p.x + s * 0.4f, p.y + s * 1.8f, s * 9.8f, s * 9.5f };
-        lines = (box){ p.x + s * 10.2f, p.y + s * 1.8f, s * 4.2f, s * 9.5f };
-        last = (box){ p.x + s * 0.4f, p.y + s * 11.9f, s * 9.8f, s * 1.2f };
-        font_draw(p.x + s * 1.6f, p.y + s * 11.3f, s * 0.6f, rgb_hex(0xffd166, 1), ALIGN_LEFT, "LAST GAME");
-        fs = s * 0.75f;
+        /* the homage picture leaves a blackboard at (349,127)-(1241,417) */
+        fitted f = fit_image(ART_HISCORE1);
+        box bb = fmap(&f, 349, 127, 892, 290);
+        float k = bb.h / 13.6f;
+        draw_fitted(ART_HISCORE1, 1);
+        rgba chalk = rgb_hex(0xf3ead2, 0.95f);
+        font_draw(bb.x + bb.w * 0.12f, bb.y + k * 0.35f, k * 0.95f, rgb_hex(0xf2d55c, 1), ALIGN_LEFT, "NAME");
+        font_draw(bb.x + bb.w * 0.72f, bb.y + k * 0.35f, k * 0.95f, rgb_hex(0xf2d55c, 1), ALIGN_RIGHT,
+                  "SCORE");
+        font_draw(bb.x + bb.w * 0.95f, bb.y + k * 0.35f, k * 0.95f, rgb_hex(0xf2d55c, 1), ALIGN_RIGHT,
+                  "LINES");
+        for (int i = 0; i < HOF_MAX; i++)
+            font_drawf(bb.x + bb.w * 0.09f, bb.y + k * (1.7f + (float)i * 1.05f), k * 0.85f,
+                       rgba_alpha(chalk, 0.6f), ALIGN_RIGHT, "%d", i + 1);
+        names = (box){ bb.x + bb.w * 0.09f, bb.y + k * 1.7f, bb.w * 0.63f, k * 10.5f };
+        lines = (box){ bb.x + bb.w * 0.72f, bb.y + k * 1.7f, bb.w * 0.23f, k * 10.5f };
+        last = (box){ bb.x + bb.w * 0.09f, bb.y + k * 12.4f, bb.w * 0.86f, k };
+        font_draw(bb.x + bb.w * 0.12f, last.y, k * 0.8f, rgb_hex(0xf2d55c, 1), ALIGN_LEFT, "LAST GAME");
+        fs = k * 0.85f;
     }
-    float rowh = names.h / 10.f;
-    for (int i = 0; i < HOF_MAX; i++) {
+    rowh = names.h / 10.f;
+    for (int i = 0; i < A.hof.count; i++) {
         float y = names.y + rowh * (float)i;
         rgba c = i == A.hof_row ? rgb_hex(0x6ff7ff, 1) : rgb_hex(0xf2f2f2, 1);
-        if (!art) font_drawf(names.x + fs * 1.6f, y, fs, rgb_hex(0xffd166, 1), ALIGN_RIGHT, "%d", i + 1);
-        if (i < A.hof.count) {
-            font_draw(names.x + (art ? fs * 0.3f : fs * 2.2f), y, fs, c, ALIGN_LEFT, A.hof.e[i].name);
-            font_drawf(names.x + names.w, y, fs, c, ALIGN_RIGHT, "%ld", (long)A.hof.e[i].score);
-            font_drawf(lines.x + lines.w, y, fs, c, ALIGN_RIGHT, "%ld", (long)A.hof.e[i].lines);
-        }
+        font_draw(names.x + fs * (orig ? 0.3f : 0.8f), y, fs, c, ALIGN_LEFT, A.hof.e[i].name);
+        font_drawf(names.x + names.w, y, fs, c, ALIGN_RIGHT, "%ld", (long)A.hof.e[i].score);
+        font_drawf(lines.x + lines.w, y, fs, c, ALIGN_RIGHT, "%ld", (long)A.hof.e[i].lines);
     }
     if (A.has_last)
         font_drawf(last.x + last.w, last.y, fs, rgb_hex(0xf2f2f2, 1), ALIGN_RIGHT, "%ld  /  %ld lines",
                    (long)A.last_score, (long)A.last_lines);
     if (A.hof_entry) {
-        float s = fminf(W, H) * 0.045f;
-        box d = { W / 2 - s * 8, H / 2 - s * 2, s * 16, s * 4 };
-        gfx_round_rect(d.x, d.y, d.w, d.h, s * 0.3f, rgb_hex(0x8a1212, 0.97f));
-        gfx_rect_outline(d.x, d.y, d.w, d.h, 3, rgb_hex(0xd9a441, 1));
-        font_draw(W / 2, d.y + s * 0.4f, s * 0.8f, rgb_hex(0xffd166, 1), ALIGN_CENTER,
-                  "Please Enter Your Name:");
-        font_drawf(W / 2, d.y + s * 1.9f, s, rgb_hex(0xffffff, 1), ALIGN_CENTER, "%s%s", A.name,
-                   fmodf(t, 1.f) < 0.5f ? "_" : " ");
-    } else {
-        font_draw(W / 2, H * 0.95f, fminf(W, H) * 0.028f, rgb_hex(0xffffff, 0.6f), ALIGN_CENTER,
+        char nm[HOF_NAME + 3];
+        snprintf(nm, sizeof nm, "%s%s", A.name, fmodf(t, 1.f) < 0.5f ? "_" : " ");
+        dialog("Please Enter Your Name:", nm, NULL);
+    } else if (!orig) {
+        font_draw(W / 2, H - fminf(W, H) * 0.05f, fminf(W, H) * 0.028f, rgb_hex(0xffffff, 0.7f), ALIGN_CENTER,
                   "< press any key >");
     }
 }
 
-static void dialog(const char *line1, const char *line2, const char *line3)
+/* a build without its pictures can only say so */
+static void draw_no_art(void)
 {
-    float W = (float)A.w, H = (float)A.h, s = fminf(W, H) * 0.04f;
-    box d = { W / 2 - s * 8, H / 2 - s * 2.6f, s * 16, s * 5.2f };
-    if (art_have(ART_DIALOG))
-        art_draw(ART_DIALOG, d.x, d.y, d.w, d.h, 1);
-    else {
-        gfx_round_rect(d.x, d.y, d.w, d.h, s * 0.3f, rgb_hex(0xa8acb4, 0.97f));
-        gfx_rect_outline(d.x, d.y, d.w, d.h, 3, rgb_hex(0x50555e, 1));
-    }
-    rgba c = rgb_hex(0x10131a, 1);
-    font_draw(W / 2, d.y + s * 0.9f, s * 0.85f, c, ALIGN_CENTER, line1);
-    if (line2) font_draw(W / 2, d.y + s * 2.1f, s * 0.85f, c, ALIGN_CENTER, line2);
-    if (line3) font_draw(W / 2, d.y + s * 3.4f, s * 0.7f, rgb_hex(0x8a1212, 1), ALIGN_CENTER, line3);
+    float W = (float)A.w, H = (float)A.h, s = fminf(W, H) * 0.035f;
+    gfx_rect(0, 0, W, H, rgb_hex(0x000000, 1));
+    font_draw(W / 2, H * 0.4f, s * 1.2f, rgb_hex(0xffd166, 1), ALIGN_CENTER, "This build has no pictures.");
+    font_draw(W / 2, H * 0.4f + s * 2, s * 0.8f, rgb_hex(0xc9d6f5, 1), ALIGN_CENTER,
+              "See README.md, Building.");
 }
 
 static void draw_game(float t)
@@ -846,21 +890,17 @@ static void render(void)
     SDL_SetRenderDrawColor(A.ren, 0, 0, 0, 255);
     SDL_RenderClear(A.ren);
     view_background(A.w, A.h);
+    if (!art_complete()) A.scr = -1;
     switch (A.scr) {
-    case S_TITLE: draw_title(t); break;
+    case S_TITLE: draw_title(); break;
     case S_SETUP:
-        if (art_have(ART_SETUP)) {
-            gfx_rect(0, 0, (float)A.w, (float)A.h, rgb_hex(0x000000, 1));
-            draw_setup_art(t);
-        } else {
-            draw_setup_modern(t);
-        }
+        draw_setup(t);
         if (A.ovl == O_QUIT) dialog("Are you sure you want", "to quit?", "[ y or n ]");
         break;
-    case S_CREDITS: draw_credits(t); break;
+    case S_CREDITS: draw_credits(); break;
     case S_HOF: draw_hof(t); break;
     case S_GAME: draw_game(t); break;
-    default: break;
+    default: draw_no_art(); break;
     }
     if (A.toast_until > A.now) {
         float s = fminf((float)A.w, (float)A.h) * 0.035f, tw = font_width(s, A.toast) + s * 2;

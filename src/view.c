@@ -240,59 +240,6 @@ static void panel(const wt_game *g, box b, const view_fx *fx)
     gfx_flush();
 }
 
-/* ---- scenes ---- */
-
-static void dome(float x, float base, float w, float h, rgba c)
-{
-    /* an onion dome on a drum */
-    gfx_rect(x - w * 0.32f, base - h * 0.45f, w * 0.64f, h * 0.45f, c);
-    for (int i = 0; i < 16; i++) {
-        float a0 = (float)i / 16 * (float)M_PI, a1 = (float)(i + 1) / 16 * (float)M_PI;
-        float r0 = sinf(a0) * (1.f + 0.35f * sinf(a0 * 2)), r1 = sinf(a1) * (1.f + 0.35f * sinf(a1 * 2));
-        float y0 = base - h * 0.45f - (1 - cosf(a0)) * h * 0.22f,
-              y1 = base - h * 0.45f - (1 - cosf(a1)) * h * 0.22f;
-        const float q[8] = { x - r0 * w * 0.5f, y0, x + r0 * w * 0.5f, y0,
-                             x + r1 * w * 0.5f, y1, x - r1 * w * 0.5f, y1 };
-        gfx_quad(q, c);
-    }
-    gfx_tri(x - w * 0.06f, base - h * 0.88f, x + w * 0.06f, base - h * 0.88f, x, base - h * 1.15f, c);
-}
-
-void view_scene(box b, int speed, float t)
-{
-    static const unsigned sky[5][2] = { { 0x2b5d9c, 0xf5b971 },
-                                        { 0x1f4f7a, 0x8fd3f4 },
-                                        { 0x3a2350, 0xf08a5d },
-                                        { 0x0f1d3a, 0x5b7fb8 },
-                                        { 0x08091a, 0x3b2d6b } };
-    rgba top = rgb_hex(sky[speed % 5][0], 1), bot = rgb_hex(sky[speed % 5][1], 1);
-    float base = b.y + b.h * 0.82f;
-    (void)t;
-    gfx_rect_v(b.x, b.y, b.w, b.h * 0.82f, top, bot);
-    gfx_rect(b.x, base, b.w, b.y + b.h - base, rgb_hex(0x1a1414, 1));
-    rgba wall = rgba_scale(rgb_hex(0x7a1f1f, 1), speed >= 3 ? 0.55f : 0.9f);
-    rgba roof = rgba_scale(rgb_hex(0x1f5f4a, 1), speed >= 3 ? 0.55f : 0.9f);
-    /* Kremlin wall with merlons */
-    gfx_rect(b.x, base - b.h * 0.06f, b.w, b.h * 0.06f, wall);
-    for (int i = 0; i < 18; i++)
-        gfx_rect(b.x + b.w * (float)i / 18, base - b.h * 0.08f, b.w / 40, b.h * 0.02f, wall);
-    /* a tower with a spire */
-    float tx = b.x + b.w * 0.3f, tw = b.w * 0.16f;
-    gfx_rect(tx - tw / 2, base - b.h * 0.42f, tw, b.h * 0.42f, wall);
-    gfx_tri(tx - tw * 0.55f, base - b.h * 0.42f, tx + tw * 0.55f, base - b.h * 0.42f, tx, base - b.h * 0.66f,
-            roof);
-    gfx_tri(tx - b.w * 0.01f, base - b.h * 0.66f, tx + b.w * 0.01f, base - b.h * 0.66f, tx, base - b.h * 0.7f,
-            rgb_hex(0xd94a3a, 1));
-    /* a cathedral with onion domes */
-    float cx = b.x + b.w * 0.72f;
-    gfx_rect(cx - b.w * 0.17f, base - b.h * 0.22f, b.w * 0.34f, b.h * 0.22f, rgba_scale(wall, 0.9f));
-    dome(cx, base - b.h * 0.22f, b.w * 0.14f, b.h * 0.26f, roof);
-    dome(cx - b.w * 0.12f, base - b.h * 0.22f, b.w * 0.08f, b.h * 0.15f,
-         rgba_scale(rgb_hex(0xd9a441, 1), 0.9f));
-    dome(cx + b.w * 0.12f, base - b.h * 0.22f, b.w * 0.08f, b.h * 0.15f, rgb_hex(0x3a6dd9, 1));
-    gfx_flush();
-}
-
 /* ---- layout ---- */
 
 void view_layout(int w, int h, view_layout_t *L)
@@ -338,15 +285,14 @@ void view_game(const wt_game *g, const view_layout_t *L, const view_fx *fx)
     view_well(g, L->well, fx, 1);
     panel(g, L->panel, fx);
     int sp = g->level > 4 ? 4 : g->level;
-    if (art_have(ART_SCENE1 + sp)) {
-        /* keep the picture's 264:350 (shown at 4:3) proportions, centred, cover the box */
-        gfx_rect(L->scene.x, L->scene.y, L->scene.w, L->scene.h, rgb_hex(0x000000, 1));
-        float aw = 264.f, ah = 480.f;
+    /* the speed's picture, fitted into the box */
+    float aw, ah;
+    art_size(ART_SCENE1 + sp, &aw, &ah);
+    gfx_rect(L->scene.x, L->scene.y, L->scene.w, L->scene.h, rgb_hex(0x000000, 1));
+    if (aw > 0 && ah > 0) {
         float k = fminf(L->scene.w / aw, L->scene.h / ah);
         art_draw(ART_SCENE1 + sp, L->scene.x + (L->scene.w - aw * k) / 2,
                  L->scene.y + (L->scene.h - ah * k) / 2, aw * k, ah * k, 1);
-    } else {
-        view_scene(L->scene, sp, fx ? fx->time : 0);
     }
     gfx_rect_outline(L->scene.x, L->scene.y, L->scene.w, L->scene.h, 2, rgb_hex(0x3a4560, 1));
     if (fx && fx->message) {
